@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>소수의 나눗셈 방탈출</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gowun+Dodum&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* 레이아웃: 생태 연구 기지 관찰 일지 — 모눈 종이 위에 표본 라벨, 자물쇠 상자 */
+:root{
+  --paper:#f4f6f1; --grid:rgba(26,84,96,.09); --ink:#1c2a33; --ink-2:#51616b;
+  --sea:#11686c; --sea-2:#d9ecea; --amber:#d98a1f; --amber-2:#fbeed6;
+  --leaf:#2f8448; --leaf-2:#dcefdf; --berry:#bf3f37; --berry-2:#f8e1de;
+  --card:#ffffff; --label:#fffaf0; --line:#cfd8d6;
+  --f-display:"Do Hyeon","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:22px 22px;
+  color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.6;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;line-height:1.25;text-wrap:balance;margin:0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-2)}
+.btn{border:2px solid var(--ink);background:var(--card);border-radius:10px;padding:10px 18px;font-weight:700;display:inline-flex;align-items:center;gap:8px;transition:transform .08s}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--sea);border-color:var(--sea);color:#fff}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#fff}
+.btn.ghost{border-color:var(--line);background:transparent}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+/* 시작 화면 */
+.start{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;padding-top:4vh}
+.room,.puzzle,.result,.teacher{grid-template-columns:minmax(0,1fr)}
+.eyebrow{font-family:var(--f-num);font-size:13px;letter-spacing:.12em;color:var(--sea)}
+.start h1{font-size:clamp(40px,8vw,72px);color:var(--ink)}
+.start h1 em{font-style:normal;color:var(--sea)}
+.dossier{background:var(--label);border:1.5px solid var(--ink);border-radius:4px;padding:20px;box-shadow:6px 6px 0 var(--sea-2);display:grid;gap:14px;max-width:640px}
+.dossier p{margin:0}
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.form label{display:grid;gap:4px;font-size:14px;color:var(--ink-2)}
+.form input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--ink-2);border-radius:8px;background:#fff;color:var(--ink);min-width:0;width:100%}
+@media (max-width:520px){.form{grid-template-columns:1fr 1fr}.form label:last-child{grid-column:1/-1}}
+.err{color:var(--berry);font-size:15px;min-height:1.2em}
+.footer-links{display:flex;gap:10px;flex-wrap:wrap}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;max-width:640px}
+.lvl{text-align:left;border:2px solid var(--line);border-radius:10px;background:rgba(255,255,255,.75);padding:14px 16px;display:grid;gap:4px;min-width:0}
+.lvl b{font-family:var(--f-display);font-weight:400;font-size:24px}
+.lvl span{font-size:14px;color:var(--ink-2)}
+.lvl .lvl-tag{justify-self:start;font-family:var(--f-num);font-size:12px;letter-spacing:.08em;padding:2px 8px;border-radius:99px;background:var(--sea-2);color:var(--sea)}
+.lvl-adv .lvl-tag{background:#e4e0f2;color:#4b3f8f}
+.lvl .lvl-rooms{font-size:13px}
+.lvl.on{border-color:var(--sea);background:#fff;box-shadow:4px 4px 0 var(--sea-2)}
+.lvl-adv.on{border-color:#4b3f8f;box-shadow:4px 4px 0 #e4e0f2}
+
+/* 상단 진행 막대 */
+.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(244,246,241,.94);backdrop-filter:blur(4px);border-bottom:1.5px solid var(--ink);margin-inline:-16px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.rooms{display:flex;gap:6px;flex-wrap:wrap}
+.rpill{font-size:13px;padding:3px 10px;border-radius:99px;border:1.5px solid var(--line);color:var(--ink-2);background:#fff}
+.rpill.here{border-color:var(--sea);color:var(--sea);font-weight:700}
+.rpill.done{background:var(--leaf-2);border-color:var(--leaf);color:var(--leaf)}
+.stats{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:14px}
+.stats .chip{display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.cards{display:flex;gap:4px}
+.ncard{width:26px;height:34px;border-radius:4px;border:1.5px solid var(--ink);display:grid;place-items:center;font-family:var(--f-num);font-weight:700;background:var(--amber-2)}
+.ncard.empty{border-style:dashed;border-color:var(--line);background:transparent;color:transparent}
+.sync{font-size:12px;color:var(--ink-2)}
+
+/* 방 화면 */
+.room{display:grid;gap:20px;padding-top:20px}
+.room-head{display:grid;gap:4px}
+.room-head .eyebrow{color:var(--amber)}
+.room-head h2{font-size:clamp(30px,5vw,44px)}
+.log{background:var(--label);border-left:6px solid var(--sea);padding:14px 18px;border-radius:0 6px 6px 0;max-width:720px}
+.log p{margin:0}
+.stage{background:#0b0f1a;border:4px solid #121826;border-radius:14px;overflow:hidden;line-height:0;max-width:860px;width:100%;box-shadow:0 8px 0 #121826,0 18px 34px rgba(18,24,38,.35)}
+#scene{width:100%;height:auto;display:block;image-rendering:pixelated;touch-action:none;cursor:pointer}
+.status{min-height:2.8em;font-weight:700;max-width:820px;padding:8px 12px;border-radius:8px;background:#fff;border:1.5px solid var(--line)}
+.status.toast{background:var(--amber-2);border-color:var(--amber);color:#8a5410}
+.ctrl{display:flex;flex-wrap:wrap;gap:16px;align-items:center;max-width:820px}
+.pad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,52px);gap:6px}
+.pad button,.actbtn{border:2px solid var(--ink);background:#fff;border-radius:12px;font-size:20px;touch-action:none;user-select:none;-webkit-user-select:none}
+.pad button:active,.pad button.on{background:var(--sea-2)}
+.pad .u{grid-column:2;grid-row:1}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
+.actbtn{width:96px;height:96px;border-radius:50%;background:var(--amber);border-color:var(--amber);color:#fff;font-family:var(--f-display);font-size:22px;box-shadow:0 4px 0 #a5660f}
+.keys{font-size:14px;color:var(--ink-2);flex:1 1 200px}
+.keys kbd{font-family:var(--f-num);border:1.5px solid var(--ink-2);border-bottom-width:3px;border-radius:5px;padding:0 6px;background:#fff;font-size:13px}
+.note-btn{justify-self:start}
+.note{background:#fff;border:1.5px solid var(--sea);border-radius:8px;padding:14px 18px;max-width:720px}
+.note h3{font-size:20px;color:var(--sea);margin-bottom:6px}
+.note p{margin:0}
+
+/* 문제 화면 */
+.puzzle{display:grid;gap:18px;padding-top:20px}
+.pz-head{display:grid;gap:6px}
+.pz-head h2{font-size:clamp(26px,4.4vw,36px)}
+.instr{font-weight:700;color:var(--sea)}
+.panel{background:var(--card);border:1.5px solid var(--ink);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.steplabel{font-family:var(--f-num);font-size:12px;letter-spacing:.1em;color:var(--amber)}
+.q{display:grid;gap:10px}
+.q .qt{font-weight:700}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.opt{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:10px 12px;text-align:left;min-height:48px}
+.opt.on{border-color:var(--sea);background:var(--sea-2);font-weight:700}
+.ox{display:grid;gap:10px}
+.oxrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:10px}
+.oxbtns{display:flex;gap:6px}
+.oxb{width:52px;height:44px;border-radius:8px;border:1.5px solid var(--line);background:#fff;font-family:var(--f-display);font-size:22px}
+.oxb.on{border-color:var(--sea);background:var(--sea);color:#fff}
+.lockbox{display:grid;gap:16px}
+.lfield{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.lfield .lab{min-width:0;flex:1 1 220px}
+.wheels{display:flex;align-items:flex-end;gap:4px;background:var(--ink);padding:8px 10px;border-radius:10px}
+.wheel{display:grid;justify-items:center;gap:2px}
+.wheel button{width:44px;height:28px;border:none;border-radius:6px;background:#3a4750;color:#fff;font-size:13px}
+.wheel .d{width:44px;height:52px;display:grid;place-items:center;background:var(--label);border-radius:6px;font-family:var(--f-num);font-weight:700;font-size:30px;color:var(--ink)}
+.wheels .pt{color:#fff;font-family:var(--f-num);font-size:32px;font-weight:700;padding-bottom:30px}
+.unit{font-weight:700}
+.lin{display:flex;align-items:center;gap:10px}
+.lockbox.compact{display:flex;flex-wrap:wrap;gap:16px 26px}
+.lockbox.compact .lab{flex:0 0 auto;font-size:24px;font-weight:700}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:1fr}}
+.col{display:grid;gap:8px;align-content:start}
+.col h4{margin:0;font-size:14px;color:var(--ink-2);font-weight:400}
+.tile{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:10px 12px;text-align:left;display:flex;gap:10px;align-items:center;min-height:48px}
+.tile .badge{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-num);font-size:13px;font-weight:700;background:var(--line);color:var(--ink)}
+.tile.pick{border-color:var(--amber);background:var(--amber-2)}
+.tile.paired{border-color:var(--sea)}
+.tile.paired .badge{background:var(--sea);color:#fff}
+.bucket{border:2px dashed var(--ink-2);border-radius:10px;padding:10px;display:grid;gap:8px;min-height:120px;align-content:start;background:rgba(255,255,255,.7);text-align:left}
+.bucket .bh{font-family:var(--f-display);font-size:19px}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.pool .tile{flex:0 1 auto}
+.expr{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-family:var(--f-num);font-size:30px;font-weight:700}
+.slot{width:54px;height:66px;border:2px dashed var(--ink-2);border-radius:8px;background:#fff;display:grid;place-items:center;font-family:var(--f-num);font-size:30px;font-weight:700}
+.slot.full{border-style:solid;border-color:var(--ink);background:var(--amber-2)}
+.bigcard{width:54px;height:66px;border:2px solid var(--ink);border-radius:8px;background:var(--amber-2);font-family:var(--f-num);font-size:30px;font-weight:700}
+.bigcard.used{opacity:.25}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.fb{padding:10px 14px;border-radius:8px;font-weight:700}
+.fb.bad{background:var(--berry-2);color:var(--berry)}
+.fb.info{background:var(--amber-2);color:#8a5410}
+.fb.good{background:var(--leaf-2);color:var(--leaf)}
+.hints{display:grid;gap:8px}
+.hint{background:var(--amber-2);border-radius:8px;padding:10px 14px;font-size:15px}
+.solved{border:2px solid var(--leaf);background:var(--leaf-2);border-radius:10px;padding:18px;display:grid;gap:10px}
+.solved h3{color:var(--leaf);font-size:26px}
+.solved p{margin:0}
+
+/* 오버레이 */
+.overlay{position:fixed;inset:0;background:rgba(28,42,51,.72);display:grid;place-items:center;padding:16px;z-index:20}
+.sheet{background:var(--label);border:2px solid var(--ink);border-radius:12px;max-width:520px;width:100%;padding:24px;display:grid;gap:14px;text-align:center;justify-items:center}
+.sheet h2{font-size:30px}
+.sheet .bigcard{width:80px;height:100px;font-size:48px;animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(.4) rotate(-12deg)}70%{transform:scale(1.1)}100%{transform:scale(1)}}
+
+/* 결과 */
+.result{display:grid;gap:20px;padding-top:20px}
+.scoreline{display:flex;flex-wrap:wrap;gap:14px}
+.stat{background:#fff;border:1.5px solid var(--ink);border-radius:10px;padding:12px 18px;display:grid;min-width:130px}
+.stat b{font-family:var(--f-num);font-size:30px}
+.stat span{font-size:13px;color:var(--ink-2)}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.qcell{background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;display:grid;gap:2px}
+.qcell.first{border-color:var(--leaf)}
+.qcell.later{border-color:var(--amber)}
+.qcell .mk{font-family:var(--f-num);font-weight:700}
+
+/* 교사 화면 */
+.teacher{display:grid;gap:16px;padding-top:20px}
+.tablewrap{overflow-x:auto;background:#fff;border:1.5px solid var(--ink);border-radius:10px}
+table{border-collapse:collapse;font-size:14px;width:100%}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+th{background:var(--sea-2);font-weight:700;position:sticky;top:0}
+td.name{text-align:left}
+td.o{color:var(--leaf);font-weight:700}
+td.t{color:var(--amber);font-weight:700}
+td.x{color:var(--line)}
+tr.rate td{background:var(--paper);font-weight:700}
+.legend{font-size:14px;color:var(--ink-2)}
+
+/* 엘리베이터 시작 화면 */
+.start-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:26px;align-items:center;max-width:900px}
+@media (max-width:720px){.start-grid{grid-template-columns:minmax(0,1fr)}}
+.start-copy{display:grid;gap:16px}
+.lead{margin:0;font-size:18px;max-width:34em}
+.elev{justify-self:center;width:100%;max-width:330px;background:linear-gradient(160deg,#e1e6ea,#a9b3bc 48%,#d3d9de);border:3px solid #5c6670;border-radius:20px;padding:18px;display:grid;gap:14px;justify-items:center;box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 10px 0 #4b545c,0 22px 34px rgba(0,0,0,.25)}
+.elev-screen{width:100%;background:#140b06;border-radius:10px;border:3px solid #39404a;padding:10px 16px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:0 12px;color:#ff9f1c;text-shadow:0 0 10px rgba(255,159,28,.85),0 0 2px #ffcf7a;box-shadow:inset 0 0 18px rgba(0,0,0,.8)}
+.elev-screen b{font-size:46px;line-height:1.1;letter-spacing:.06em}
+.elev-arrow{font-size:22px;animation:blink 1.2s steps(2) infinite}
+.elev-place{grid-column:1/-1;font-size:14px;font-family:var(--f-body)}
+@keyframes blink{50%{opacity:.25}}
+.elev-btns{display:grid;gap:12px;width:100%}
+.ebtn{display:flex;align-items:center;gap:14px;text-align:left;background:linear-gradient(#f7f9fa,#cfd6dc);border:2px solid #5c6670;border-radius:999px;padding:7px 16px 7px 7px;box-shadow:0 4px 0 #5c6670;color:#26303a;min-width:0}
+.ebtn:active{transform:translateY(3px);box-shadow:0 1px 0 #5c6670}
+.ebtn .ecode{flex:none;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#ffffff,#d8dee3 60%,#9aa6b0);border:3px solid #6b757e;font-weight:700;font-size:18px;color:#26303a}
+.ebtn .efloor{display:grid;font-family:var(--f-display);font-size:22px;line-height:1.15;min-width:0}
+.ebtn .efloor small{font-family:var(--f-body);font-size:13px;color:#56616b}
+.ebtn.on{background:linear-gradient(#fffaf0,#ffe8b0);border-color:#b36b00}
+.ebtn.on .ecode{background:radial-gradient(circle at 35% 30%,#fff7d1,#ffcf56 55%,#e08a12);border-color:#b36b00;color:#5a3300;animation:glow 1.6s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 4px rgba(255,207,86,.45),0 0 18px rgba(255,180,40,.8)}50%{box-shadow:0 0 0 8px rgba(255,207,86,.2),0 0 32px rgba(255,180,40,1)}}
+.elev-plate{font-family:var(--f-num);font-size:11px;letter-spacing:.14em;color:#3d464e;background:#eef1f3;border:1px solid #7a848d;border-radius:4px;padding:2px 10px}
+.floorinfo{display:grid;gap:6px}
+.floorinfo b{font-family:var(--f-display);font-weight:400;font-size:26px}
+.floorinfo p{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip2{font-size:13px;padding:3px 10px;border-radius:99px;background:var(--sea-2);color:var(--sea)}
+.elev-doors{position:fixed;inset:0;z-index:60;pointer-events:none}
+.elev-doors .ed{position:absolute;top:0;bottom:0;width:50%;background:repeating-linear-gradient(90deg,#aeb7bf 0 3px,#c9d0d6 3px 34px);box-shadow:inset 0 0 0 4px #6b757e;animation:edl 1.6s cubic-bezier(.7,0,.3,1) forwards}
+.elev-doors .ed.l{left:0}.elev-doors .ed.r{right:0;animation-name:edr}
+@keyframes edl{0%,45%{transform:translateX(0)}100%{transform:translateX(-102%)}}
+@keyframes edr{0%,45%{transform:translateX(0)}100%{transform:translateX(102%)}}
+.ed-sign{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);background:#140b06;color:#ff9f1c;border:3px solid #39404a;border-radius:12px;padding:12px 28px;display:grid;justify-items:center;font-family:var(--f-num);text-shadow:0 0 10px rgba(255,159,28,.85);animation:sign 1.6s forwards}
+.ed-sign b{font-size:52px;line-height:1.1}
+.ed-sign span{font-family:var(--f-body);font-size:16px}
+@keyframes sign{0%,38%{opacity:1}52%,100%{opacity:0}}
+.fx-layer{position:fixed;inset:0;pointer-events:none;z-index:70}
+/* 게임 화면 효과 */
+.floorbadge{background:var(--ink);color:#ffd23f;font-weight:700;border-radius:6px;padding:3px 9px;font-size:13px;align-self:center}
+.mute{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:2px 10px;font-size:13px;white-space:nowrap}
+.panel.shake{animation:shake .45s}
+@keyframes shake{20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.panel.pass{animation:passp .7s}
+@keyframes passp{0%{box-shadow:0 0 0 0 rgba(47,132,72,.65)}100%{box-shadow:0 0 0 22px rgba(47,132,72,0)}}
+.solved{animation:popIn .55s cubic-bezier(.2,1.5,.4,1);box-shadow:0 0 0 6px rgba(47,132,72,.15),0 12px 30px rgba(47,132,72,.25)}
+@keyframes popIn{0%{transform:scale(.8);opacity:0}100%{transform:none;opacity:1}}
+.sheet{animation:popIn .5s cubic-bezier(.2,1.5,.4,1)}
+.sheet .bigcard{animation:flip .9s cubic-bezier(.2,1.3,.4,1);box-shadow:0 0 0 4px #fff,0 0 34px rgba(255,200,60,.95)}
+@keyframes flip{0%{transform:rotateY(540deg) scale(.3)}100%{transform:none}}
+.wheel .d.roll-up{animation:rollup .18s ease-out}
+.wheel .d.roll-down{animation:rolldown .18s ease-out}
+@keyframes rollup{0%{transform:translateY(40%);opacity:.2}100%{transform:none;opacity:1}}
+@keyframes rolldown{0%{transform:translateY(-40%);opacity:.2}100%{transform:none;opacity:1}}
+.crate,.ncard{transition:transform .2s}
+@media (prefers-reduced-motion:reduce){.panel.shake,.panel.pass,.solved,.sheet,.sheet .bigcard,.ebtn.on .ecode,.elev-arrow,.wheel .d{animation:none!important}}
+
+/* 출제마법사에서 가져온 것: 난이도, 보기 번호, 그림, 서술형, QR */
+.diff{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;font-size:17px;margin-right:10px;vertical-align:middle;color:#fff;font-family:var(--f-display)}
+.d-lo{background:#5fb38a}.d-mid{background:#5aa7da}.d-hi{background:#c27ad6}
+.dtag{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:99px;padding:0 6px;font-size:12px;color:#fff;font-weight:700}
+.dchip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--line);border-radius:99px;padding:4px 12px;font-size:14px}
+.opt.check{display:flex;align-items:center;gap:8px}
+.cbox{flex:none;width:22px;height:22px;border:2px solid var(--ink-2);border-radius:5px;display:grid;place-items:center;font-weight:700;background:#fff;color:var(--sea)}
+.opt.on .cbox{border-color:var(--sea)}
+.wtext{font:inherit;font-size:16px;width:100%;min-height:84px;padding:10px 12px;border:1.5px solid var(--ink-2);border-radius:8px;resize:vertical;background:#fffdf7;color:var(--ink)}
+.fig{margin:0;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;max-width:600px;min-width:0}
+.fig svg{width:100%;height:auto;display:block}
+.fig figcaption{font-weight:700;color:var(--amber);margin-bottom:6px}
+.fig pre{font-family:var(--f-num);font-size:18px;margin:0;line-height:1.5;overflow-x:auto}
+.divt{display:grid;grid-template-columns:auto auto;gap:6px;align-items:center;justify-content:start}
+.divt .arr{font-family:var(--f-num);font-weight:700;color:#5a6ab0;text-align:center}
+.divt .arr.v{line-height:1.2}
+.divt table{border-collapse:collapse}
+.divt td{width:76px;height:50px;text-align:center;border:2px solid #8f9fc0;background:#eef1fb;font-family:var(--f-num);font-size:20px;font-weight:700}
+.divt td.blank{background:#fff;color:#7a86a8;font-family:var(--f-body)}
+.divt td.none{border:none;background:transparent}
+.qrbox{background:#fff;padding:12px;border-radius:10px;border:1.5px solid var(--line);min-width:240px;min-height:240px;display:grid;place-items:center}
+.wlist{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px 16px}
+.wlist h3{font-size:18px;margin-bottom:6px}
+.wlist ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.wlist .who{color:var(--ink-2);font-size:14px}
+.wlist .o{color:var(--leaf);font-weight:700}.wlist .t{color:var(--amber);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ===================================================================
+   설정
+   - 구글 Apps Script에서 바로 띄우면 아무것도 바꾸지 않아도 됩니다.
+   - GitHub Pages·Netlify 등 다른 곳에 올릴 때는 ENDPOINT에 Apps Script 웹 앱 주소(…/exec)를 넣으세요.
+   - 둘 다 아니면 '연습 모드'로 이 기기 안에만 결과가 저장됩니다.
+=================================================================== */
+const CONFIG = {
+  ENDPOINT: 'https://script.google.com/macros/s/AKfycbx4kVhjzo7KMkOkR2RAtERORbyZh-fEIB_dlEpDbWN4EGKSiFT-MHN_QdpwHaIAMdk/exec',
+  SHOW_DIFFICULTY: false   // true로 바꾸면 학생 화면 문제에 하·중·상 난이도 표시가 나와요
+};
+const CIRC = '①②③④⑤⑥⑦⑧';
+const DIFF_CLASS = { '하': 'lo', '중': 'mid', '상': 'hi' };
+let appUrl = '';
+
+/* ===================================================================
+   단원 데이터 — 다른 단원으로 바꿀 때는 이 UNIT만 바꾸면 됩니다.
+   문제 유형: choice(객관식) ox(O/X) lock(숫자 자물쇠) match(짝짓기)
+             sort(분류) order(순서) build(카드로 식 만들기)
+=================================================================== */
+const UNIT = {
+  id: 'm6-2-3',
+  subject: '수학', grade: '6-2', unitName: '3. 소수의 나눗셈',
+  title: ['연구 기지를', '탈출하라'],
+  hintTokens: 5,
+  levels: [
+    { id: 'easy', label: '기초', floor: '1층', code: '1F', place: '햇살 정원 구역', blurb: '나비와 거북이가 사는 밝은 정원 구역',
+      story: '연구 기지 1층, 햇살이 드는 정원 구역의 문이 모두 잠겼어요. 다섯 방의 자물쇠 상자를 소수의 나눗셈으로 열고, 숫자 카드를 모아 펭귄 놀이터의 출구를 여세요.',
+      dark: 0, themes: [10, 11, 12, 13, 14],
+      maps: [
+        [ '#######D########',
+          '#ff..u.......ff#',
+          '#f......A.....f#',
+          '#..,,,,....u...#',
+          '#..,,,,........#',
+          '#.B.....N....f.#',
+          '#u...........u.#',
+          '#.....ff...C...#',
+          '#f............f#',
+          '#......S.......#',
+          '################' ],
+        [ '#######D########',
+          '#qq.t......t.qq#',
+          '#..............#',
+          '#.A....,,,,....#',
+          '#......,,,,..B.#',
+          '#p.....N.......#',
+          '#..bb......bb..#',
+          '#.....C........#',
+          '#p...........qp#',
+          '#......S.......#',
+          '################' ],
+        [ '#######D########',
+          '#u...........u.#',
+          '#..wwwww.......#',
+          '#..wlwww...A...#',
+          '#..wwwwl.......#',
+          '#f.....N....f..#',
+          '#..B.....wwwww.#',
+          '#........wlwww.#',
+          '#u....C......u.#',
+          '#......S.......#',
+          '################' ],
+        [ '#######D########',
+          '#bbb..t.....bbb#',
+          '#..............#',
+          '#.c..A.....c...#',
+          '#..tt.....tt...#',
+          '#p.....N......p#',
+          '#..........B...#',
+          '#.c..C.....,,,.#',
+          '#p...........cp#',
+          '#......S.......#',
+          '################' ],
+        [ '#######C########',
+          '#..............#',
+          '#.ii..g....ii..#',
+          '#....A.....g...#',
+          '#.g............#',
+          '#..wwww.N......#',
+          '#..wlww....B...#',
+          '#.........g....#',
+          '#.ii.......ii..#',
+          '#......S.......#',
+          '################' ]
+      ],
+      rooms: [
+        { name: '나비 정원', short: '나비', topic: '(소수 한 자리 수)÷(소수 한 자리 수)',
+          log: '꽃밭 위로 나비들이 날아다녀요. 표지판: “작은 나비 날개 0.8 cm, 큰 나비 날개 2.4 cm.”',
+          note: { title: '관찰 노트 · 10배 해서 나누기', text: '소수 한 자리 수끼리 나눌 때는 두 수를 똑같이 10배 해서 자연수의 나눗셈으로 계산해요. 0.9÷0.3 → 9÷3 = 3' } },
+        { name: '리본 공작소', short: '리본', topic: '(소수 두 자리 수)÷(소수 두 자리 수)',
+          log: '알록달록한 리본이 가득한 공작소예요. 메모: “리본 1.25 m를 0.25 m씩 잘라 꽃 장식을 만들 것.”',
+          note: { title: '관찰 노트 · 100배 해서 나누기', text: '소수 두 자리 수끼리 나눌 때는 두 수를 똑같이 100배 해요. 0.48÷0.16 → 48÷16 = 3. m를 cm로 바꾸는 것과 같아요.' } },
+        { name: '거북 연못', short: '연못', topic: '(자연수)÷(소수)',
+          log: '연못에서 거북이가 헤엄쳐요. 안내판: “바다거북은 0.5시간에 15 km를 헤엄칠 수 있어요.”',
+          note: { title: '관찰 노트 · 나누는 수를 자연수로', text: '나누는 수가 자연수가 되도록 두 수를 똑같이 10배 해요. 4÷0.5 → 40÷5 = 8. 나누는 수가 1보다 작으면 몫은 나누어지는 수보다 커져요.' } },
+        { name: '햇살 목공방', short: '목공방', topic: '몫을 어림하여 나타내기',
+          log: '햇살이 비치는 목공방이에요. 작업대 메모: “넓이 2 m²인 나무판, 세로는 0.6 m. 가로는 약 몇 m?”',
+          note: { title: '관찰 노트 · 올림, 버림, 반올림', text: '반올림: 바로 아래 자리 숫자가 5 이상이면 올리고 4 이하면 버려요. 올림: 아래 자리에 0이 아닌 숫자가 있으면 올려요. 버림: 아래 자리를 모두 버려요.' } },
+        { name: '펭귄 놀이터', short: '놀이터', topic: '나누어 주고 남는 양',
+          log: '펭귄들이 미끄럼을 타며 놀고 있어요. 먹이 통 메모: “먹이 5.5 kg을 양동이에 2 kg씩.” 그 너머에 출구가 보여요.',
+          note: { title: '관찰 노트 · 남는 양 구하기', text: '몫을 자연수까지만 구하고, 나누어지는 수에서 (나누는 수)×(몫)을 빼면 남는 양이에요. 남는 양은 나누는 수보다 작아요.' } }
+      ],
+      puzzles: [
+        /* ---------- 1. 나비 정원 ---------- */
+        { id: 'e01', diff: '하', room: 0, title: '나비 날개는 몇 배?', lesson: '2차시',
+          story: '작은 나비 날개는 0.8 cm, 큰 나비 날개는 2.4 cm예요. cm를 mm로 바꾸면 자연수로 나눌 수 있어요.',
+          instructions: '바퀴를 돌려 세 칸의 숫자를 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '2.4 cm는 몇 mm일까요?', format: '##', answer: '24', unit: 'mm' },
+            { label: '0.8 cm는 몇 mm일까요?', format: '#', answer: '8', unit: 'mm' },
+            { label: '큰 날개는 작은 날개의 몇 배일까요?', format: '#', answer: '3', unit: '배' } ] }],
+          hints: ['1 cm = 10 mm예요. 0.8 cm는 1 cm보다 조금 짧아요.', '24÷8을 계산하면 2.4÷0.8의 몫과 같아요.'],
+          explanation: '2.4 cm = 24 mm, 0.8 cm = 8 mm이고 24÷8 = 3이에요. 그래서 2.4÷0.8 = 3, 큰 날개는 3배예요.' },
+        { id: 'e02', diff: '하', room: 0, title: '꽃밭 짝 찾기', lesson: '2차시',
+          story: '꽃밭 팻말에 나눗셈이 적혀 있어요. 두 수를 똑같이 10배 한 짝을 찾아 주세요.',
+          instructions: '왼쪽 식을 누르고, 두 수를 10배 한 오른쪽 식을 누르세요. 쓰이지 않는 카드도 있어요.',
+          parts: [{ type: 'match',
+            left: [ { id: 'a', label: '4.8 ÷ 0.6' }, { id: 'b', label: '3.5 ÷ 0.5' }, { id: 'c', label: '6.4 ÷ 0.8' } ],
+            right: [ { id: 'r1', label: '35 ÷ 5' }, { id: 'r2', label: '480 ÷ 6' }, { id: 'r3', label: '64 ÷ 8' }, { id: 'r4', label: '48 ÷ 6' } ],
+            answer: { a: 'r4', b: 'r1', c: 'r3' } }],
+          hints: ['4.8을 10배 하면 48, 0.6을 10배 하면 6이에요.', '480÷6은 4.8을 100배 했어요. 두 수를 똑같이 10배 한 것이 아니에요.'],
+          explanation: '4.8÷0.6 = 48÷6 = 8, 3.5÷0.5 = 35÷5 = 7, 6.4÷0.8 = 64÷8 = 8이에요.' },
+        { id: 'e03', diff: '하', room: 0, title: '꿀 항아리', lesson: '2차시', card: '5',
+          story: '정원 창고의 꿀 항아리에 문제 세 개가 붙어 있어요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '2.7 ÷ 0.3의 몫은?', options: ['0.9', '3', '9', '90'], answer: 2 },
+            { q: '꿀 1.8 L를 컵에 0.2 L씩 나누어 담으면 몇 컵이 될까요?', options: ['0.9컵', '6컵', '9컵', '16컵'], answer: 2 },
+            { q: '1.2 ÷ 0.4 = 12 ÷ □ 에서 □ 안에 알맞은 수는?', options: ['0.4', '3', '4', '40'], answer: 2 } ] }],
+          hints: ['두 수를 10배 해요. 2.7÷0.3 → 27÷3', '1.8÷0.2 → 18÷2, 0.4를 10배 하면?'],
+          explanation: '2.7÷0.3 = 27÷3 = 9, 1.8÷0.2 = 18÷2 = 9(컵)이에요. 1.2÷0.4는 두 수를 10배 해서 12÷4예요.' },
+
+        /* ---------- 2. 리본 공작소 ---------- */
+        { id: 'e04', diff: '하', room: 1, title: '리본 꽃 장식', lesson: '3차시',
+          story: '리본 1.25 m를 0.25 m씩 잘라 꽃 장식을 만들어요. m를 cm로 바꿔 생각해 봐요.',
+          instructions: '바퀴를 돌려 세 칸의 숫자를 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '1.25 m는 몇 cm일까요?', format: '###', answer: '125', unit: 'cm' },
+            { label: '0.25 m는 몇 cm일까요?', format: '##', answer: '25', unit: 'cm' },
+            { label: '꽃 장식을 몇 개 만들 수 있을까요?', format: '#', answer: '5', unit: '개' } ] }],
+          hints: ['1 m = 100 cm예요.', '125÷25를 계산하면 1.25÷0.25의 몫과 같아요.'],
+          explanation: '1.25 m = 125 cm, 0.25 m = 25 cm이고 125÷25 = 5예요. 꽃 장식을 5개 만들 수 있어요.' },
+        { id: 'e05', diff: '중', room: 1, title: '공작소 계산 검사', lesson: '3차시',
+          story: '공작소 칠판에 계산 네 줄이 적혀 있어요. 틀린 줄이 섞여 있대요.',
+          instructions: '각 문장이 맞으면 O, 틀리면 X를 누르세요.',
+          parts: [{ type: 'ox', statements: [
+            { text: '0.36 ÷ 0.12의 몫은 36 ÷ 12의 몫과 같다.', answer: true },
+            { text: '1.44 ÷ 0.12의 몫은 12이다.', answer: true },
+            { text: '0.56 ÷ 0.08의 몫은 0.7이다.', answer: false },
+            { text: '2.5 ÷ 0.5의 몫은 5이다.', answer: true } ] }],
+          hints: ['두 수를 똑같이 100배 하면 몫은 그대로예요.', '0.56÷0.08 → 56÷8은 얼마일까요?'],
+          explanation: '0.56÷0.08 = 56÷8 = 7이라서 세 번째 문장만 틀렸어요. 나머지는 모두 맞아요.' },
+        { id: 'e06', diff: '중', room: 1, title: '리본 바구니', lesson: '3차시', card: '1',
+          story: '리본 카드를 두 바구니에 나누어 담아야 해요.',
+          instructions: '카드를 누른 뒤 담을 바구니를 누르세요.',
+          parts: [{ type: 'sort',
+            items: [ { id: 'a', label: '0.72 ÷ 0.08' }, { id: 'b', label: '0.24 ÷ 0.12' }, { id: 'c', label: '1.8 ÷ 0.2' }, { id: 'd', label: '0.6 ÷ 0.3' }, { id: 'e', label: '3.6 ÷ 0.4' }, { id: 'f', label: '0.84 ÷ 0.42' } ],
+            buckets: [ { id: 'big', label: '몫이 5보다 큰 식' }, { id: 'small', label: '몫이 5보다 작은 식' } ],
+            answer: { a: 'big', c: 'big', e: 'big', b: 'small', d: 'small', f: 'small' } }],
+          hints: ['두 수를 10배나 100배 해서 자연수 나눗셈으로 바꿔 봐요.', '0.72÷0.08 → 72÷8 = 9, 0.24÷0.12 → 24÷12 = 2'],
+          explanation: '0.72÷0.08 = 9, 1.8÷0.2 = 9, 3.6÷0.4 = 9는 5보다 크고, 0.24÷0.12 = 2, 0.6÷0.3 = 2, 0.84÷0.42 = 2는 5보다 작아요.' },
+
+        /* ---------- 3. 거북 연못 ---------- */
+        { id: 'e07', diff: '하', room: 2, title: '바다거북의 속력', lesson: '5차시',
+          story: '바다거북은 0.5시간에 15 km를 헤엄칠 수 있어요. 한 시간 동안에는 몇 km를 갈까요?',
+          instructions: '자물쇠를 돌려 한 시간 동안 가는 거리를 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '15 ÷ 0.5 =', format: '##', answer: '30', unit: 'km' } ] }],
+          hints: ['0.5시간은 30분이에요. 한 시간은 30분의 2배!', '두 수를 10배 하면 150÷5예요.'],
+          explanation: '15÷0.5 = 150÷5 = 30이에요. 바다거북은 한 시간에 30 km를 헤엄쳐요.' },
+        { id: 'e08', diff: '하', room: 2, title: '연잎 징검다리', lesson: '5차시',
+          story: '연잎 징검다리를 건너려면 문제 세 개를 풀어야 해요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '6 ÷ 0.2의 몫은?', options: ['0.3', '3', '30', '300'], answer: 2 },
+            { q: '9 ÷ 1.5의 몫은?', options: ['0.6', '1.5', '6', '60'], answer: 2 },
+            { q: '8 ÷ 0.4를 자연수의 나눗셈으로 바꾸려면 두 수를 몇 배 해야 할까요?', options: ['그대로', '0.1배', '10배', '100배'], answer: 2 } ] }],
+          hints: ['6÷0.2 → 60÷2', '9÷1.5 → 90÷15'],
+          explanation: '6÷0.2 = 60÷2 = 30, 9÷1.5 = 90÷15 = 6이에요. 8÷0.4는 두 수를 10배 해서 80÷4 = 20으로 계산해요.' },
+        { id: 'e09', diff: '중', room: 2, title: '거북이 줄 세우기', lesson: '5차시', card: '8',
+          story: '거북이 네 마리 등껍질에 나눗셈이 적혀 있어요. 몫이 작은 거북이부터 줄을 세워 주세요.',
+          instructions: '몫이 가장 작은 식부터 차례로 누르세요. 다시 누르면 취소돼요.',
+          parts: [{ type: 'order',
+            items: [ { id: 'a', label: '6 ÷ 0.5' }, { id: 'b', label: '2 ÷ 0.5' }, { id: 'c', label: '3 ÷ 0.1' }, { id: 'd', label: '4 ÷ 0.8' } ],
+            answer: ['b', 'd', 'a', 'c'] }],
+          hints: ['0.5로 나누면 2배, 0.1로 나누면 10배가 돼요.', '2÷0.5 = 4, 4÷0.8 = 40÷8'],
+          explanation: '2÷0.5 = 4, 4÷0.8 = 5, 6÷0.5 = 12, 3÷0.1 = 30이에요.' },
+
+        /* ---------- 4. 햇살 목공방 ---------- */
+        { id: 'e10', diff: '중', room: 3, title: '어림 연습판', lesson: '6차시',
+          story: '목공방 연습판에 끝없이 이어지는 몫이 적혀 있어요. 알맞게 간단히 나타내 보세요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '5 ÷ 3 = 1.666…을 반올림하여 소수 첫째 자리까지 나타내면?', options: ['1.6', '1.66', '1.7', '2'], answer: 2 },
+            { q: '10 ÷ 3 = 3.333…을 버림하여 일의 자리까지 나타내면?', options: ['3', '3.3', '3.4', '4'], answer: 0 },
+            { q: '7 ÷ 6 = 1.166…을 올림하여 소수 첫째 자리까지 나타내면?', options: ['1.1', '1.17', '1.2', '2'], answer: 2 } ] }],
+          hints: ['반올림하여 소수 첫째 자리까지: 소수 둘째 자리 숫자를 봐요.', '올림은 아래 자리에 0이 아닌 숫자가 있으면 올려요.'],
+          explanation: '1.666…의 소수 둘째 자리는 6이라 올려서 1.7, 3.333…을 버림하면 3, 1.166…을 올림하면 1.2예요.' },
+        { id: 'e11', diff: '중', room: 3, title: '나무판의 가로', lesson: '6차시',
+          story: '넓이가 2 m²인 직사각형 나무판의 세로가 0.6 m예요. 가로는 2÷0.6 = 3.333… m로 끝없이 이어져요.',
+          instructions: '가로를 반올림하여 소수 첫째 자리까지 나타내세요.',
+          parts: [{ type: 'lock', fields: [ { label: '2 ÷ 0.6의 몫을 반올림하여 소수 첫째 자리까지', format: '#.#', answer: '3.3', unit: 'm' } ] }],
+          hints: ['3.333…에서 소수 둘째 자리 숫자를 찾아요.', '소수 둘째 자리 숫자가 3이면 4 이하라서 버려요.'],
+          explanation: '2÷0.6 = 3.333…이에요. 소수 둘째 자리 숫자가 3이므로 버려서 3.3 m예요.' },
+        { id: 'e12', diff: '중', room: 3, title: '목공방 주문서', lesson: '6차시', card: '2',
+          story: '목공방 주문서 세 장이 왔어요. 상황에 맞는 답을 찾아 주세요.',
+          instructions: '왼쪽 주문서를 누르고, 알맞은 답을 오른쪽에서 누르세요.',
+          parts: [{ type: 'match',
+            left: [ { id: 'a', label: '나무 막대 7 m를 2 m씩 자르면 2 m 막대는 몇 개?' }, { id: 'b', label: '13명이 4명씩 타는 보트를 모두 타려면 보트는 몇 대?' }, { id: 'c', label: '1 ÷ 3의 몫을 반올림하여 소수 첫째 자리까지' } ],
+            right: [ { id: 'r1', label: '3개' }, { id: 'r2', label: '4개' }, { id: 'r3', label: '3대' }, { id: 'r4', label: '4대' }, { id: 'r5', label: '0.3' }, { id: 'r6', label: '0.4' } ],
+            answer: { a: 'r1', b: 'r4', c: 'r5' } }],
+          hints: ['7÷2 = 3.5, 13÷4 = 3.25, 1÷3 = 0.333…', '막대는 2 m가 다 된 것만 세요. 보트는 남는 사람도 타야 해요.'],
+          explanation: '7÷2 = 3.5에서 2 m 막대는 3개(버림), 13÷4 = 3.25라 남은 사람도 타려면 4대(올림), 1÷3 = 0.333…을 반올림하면 0.3이에요.' },
+
+        /* ---------- 5. 펭귄 놀이터 ---------- */
+        { id: 'e13', diff: '하', room: 4, title: '펭귄 먹이 통', lesson: '7차시',
+          story: '먹이 5.5 kg을 양동이에 2 kg씩 나누어 담아요. 양동이 수는 자연수여야 해요.',
+          instructions: '양동이 수와 남는 먹이의 무게를 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '먹이를 담은 양동이 수', format: '#', answer: '2', unit: '개' },
+            { label: '남는 먹이의 무게', format: '#.#', answer: '1.5', unit: 'kg' } ] }],
+          hints: ['5.5에서 2를 몇 번 뺄 수 있는지 세어 봐요.', '2×2 = 4예요. 5.5에서 4를 빼면?'],
+          explanation: '5.5에서 2를 두 번 빼면 1.5가 남아요. 양동이 2개에 담고 1.5 kg이 남아요. 확인: 2×2 + 1.5 = 5.5' },
+        { id: 'e14', diff: '중', room: 4, title: '미끄럼틀 끈', lesson: '7차시', card: '6',
+          story: '미끄럼틀을 꾸밀 끈 7.5 m를 펭귄 사육사들에게 2 m씩 나누어 주어요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '끈을 나누어 줄 수 있는 사람은 몇 명일까요?', options: ['2명', '3명', '3.75명', '4명'], answer: 1 },
+            { q: '나누어 주고 남는 끈은 몇 m일까요?', options: ['0.5 m', '1.5 m', '3.5 m', '15 m'], answer: 1 },
+            { q: '남는 양은 나누는 수와 비교하면 어떨까요?', options: ['항상 나누는 수보다 작다', '항상 나누는 수보다 크다', '항상 나누는 수와 같다', '상관없다'], answer: 0 } ] }],
+          hints: ['2 m씩 몇 번 줄 수 있을까요? 2×3 = 6, 2×4 = 8', '7.5 − 6을 계산해 보세요.'],
+          explanation: '2×3 = 6이고 2×4 = 8은 7.5보다 크니 3명에게 줄 수 있어요. 남는 끈은 7.5 − 6 = 1.5(m)예요. 남는 양이 나누는 수보다 크면 한 명에게 더 줄 수 있으니, 남는 양은 항상 나누는 수보다 작아요.' },
+        { id: 'e15', diff: '중', room: 4, title: '놀이터 출구', lesson: '종합', final: true,
+          story: '출구 문에 카드 칸 네 개가 있어요. 문에 새겨진 글: “모은 숫자 카드로 □.□ ÷ □.□ 를 만들어라. 몫이 가장 큰 식만 문을 연다.”',
+          instructions: '1단계: 카드로 몫이 가장 큰 식을 만드세요. 2단계: 그 식의 몫을 어림한 값을 고르세요.',
+          parts: [
+            { type: 'build', stepTitle: '몫이 가장 큰 식 만들기', template: ['a', '.', 'b', '÷', 'c', '.', 'd'] },
+            { type: 'choice', stepTitle: '출구 자물쇠', questions: [
+              { q: '만든 식의 몫을 반올림하여 소수 첫째 자리까지 나타내면?', options: ['0.7', '7.1', '7.2', '72'], answer: 2 } ] } ],
+          hints: ['나누어지는 수는 가장 크게(8.6), 나누는 수는 가장 작게 만들어요.', '8.6÷1.2 = 86÷12 = 7.16…'],
+          explanation: '나누어지는 수를 가장 큰 8.6, 나누는 수를 가장 작은 1.2로 만들면 8.6÷1.2 = 7.166…이고, 반올림하여 소수 첫째 자리까지 나타내면 7.2예요.' }
+      ]
+    },
+    { id: 'basic', label: '기본', floor: '지하 1층', code: 'B1', place: '생태 관찰 구역', blurb: '곤충, 새, 바다 생물을 관찰하는 구역',
+      story: '지하 1층 생태 관찰 구역에 정전이 일어나 모든 문이 잠겼어요. 다섯 관찰실의 자물쇠 상자를 소수의 나눗셈으로 열고, 숫자 카드를 모아 출구 문을 여세요.',
+      dark: 0.34, themes: [0, 1, 2, 3, 4],
+      maps: [
+          [ '#######D########',
+            '#ssss......rr..#',
+            '#.....,,,,.....#',
+            '#.r...,,,,..A..#',
+            '#.....,,,,.....#',
+            '#p.....N......p#',
+            '#..B........r..#',
+            '#.........C....#',
+            '#p....r.......p#',
+            '#......S.......#',
+            '################' ],
+          [ '####WW#D#WW#####',
+            '#k............k#',
+            '#..............#',
+            '#..A.....t.....#',
+            '#........t..B..#',
+            '#p......N......#',
+            '#..............#',
+            '#....ss....C...#',
+            '#k............k#',
+            '#......S.......#',
+            '################' ],
+          [ '#######D########',
+            '#wwww......wwww#',
+            '#wwww......wwww#',
+            '#....A.........#',
+            '#..........B...#',
+            '#p.....N.......#',
+            '#..ww......ww..#',
+            '#..ww..C...ww..#',
+            '#..............#',
+            '#......S.......#',
+            '################' ],
+          [ '#######D########',
+            '#bbb.......bbb.#',
+            '#..............#',
+            '#.c.c..A....c..#',
+            '#..............#',
+            '#p..t..N..t...p#',
+            '#..............#',
+            '#..B.......C...#',
+            '#.c..........c.#',
+            '#......S.......#',
+            '################' ],
+          [ '#######C########',
+            '#..............#',
+            '#.ii......g..ii#',
+            '#.....A........#',
+            '#.g............#',
+            '#wwww..N...g...#',
+            '#wwww..........#',
+            '#.........B..g.#',
+            '#.g............#',
+            '#......S.......#',
+            '################' ]
+      ],
+      rooms: [
+        { name: '곤충 관찰실', short: '곤충', topic: '자릿수가 같은 (소수)÷(소수)',
+          log: '배추흰나비 애벌레 관찰 일지가 펼쳐져 있어요. “일주일 전 2.4 cm, 오늘 7.2 cm.” 옆에는 장난감을 만들 끈이 쌓여 있어요.',
+          note: { title: '관찰 노트 · 몫이 변하지 않는 규칙', text: '나누어지는 수와 나누는 수에 똑같이 10배 또는 100배를 하면 몫은 변하지 않아요. 4.8÷1.2 = 48÷12 = 4, 0.96÷0.32 = 96÷32 = 3' } },
+        { name: '새 관측대', short: '관측대', topic: '자릿수가 다른 (소수)÷(소수)',
+          log: '망원경 옆 기록판: “황새의 날개 길이 · 접었을 때 0.5 m, 펼쳤을 때 2.25 m.” 아래에는 제자리멀리뛰기 기록표도 붙어 있어요.',
+          note: { title: '관찰 노트 · 소수점 옮기기', text: '나누는 수가 자연수가 되도록 소수점을 옮기고, 나누어지는 수의 소수점도 같은 칸만큼 옮겨요. 몫의 소수점은 옮긴 자리에 맞춰 찍어요. 3.36÷1.2 → 33.6÷12 = 2.8' } },
+        { name: '바다 수조', short: '수조', topic: '(자연수)÷(소수)',
+          log: '거대한 수조 안에 돛새치가 지나가요. 안내판: “돛새치는 1.5시간에 180 km를 헤엄칠 수 있어요.”',
+          note: { title: '관찰 노트 · 자연수도 소수점을 옮겨요', text: '자연수 뒤에는 소수점과 0이 숨어 있어요. 9÷2.25는 두 수를 모두 100배 해서 900÷225 = 4로 계산해요.' } },
+        { name: '공방', short: '공방', topic: '몫을 어림하여 나타내기',
+          log: '동물 쉼터에 깔 방석을 만드는 공방이에요. 작업대 메모: “넓이 약 2 m², 세로 0.7 m. 가로는?”',
+          note: { title: '관찰 노트 · 몫을 간단하게', text: '몫이 나누어떨어지지 않으면 올림, 버림, 반올림으로 원하는 자리까지 나타내요. 반올림하여 소수 첫째 자리까지 나타내려면 소수 둘째 자리 숫자를 봐요.' } },
+        { name: '펭귄 사육장', short: '펭귄', topic: '나누어 주고 남는 양',
+          log: '펭귄들이 먹이를 기다려요. 냉장고 메모: “먹이 9.9 kg을 양동이에 2.2 kg씩 나누어 담기.” 그 뒤로 출구 문이 보여요.',
+          note: { title: '관찰 노트 · 남는 양 확인하기', text: '몫을 자연수까지만 구하고, 남는 양의 소수점은 원래 나누어지는 수의 소수점 자리에 맞춰 찍어요. 확인: (나누는 수)×(몫)+(남는 양) = (나누어지는 수)' } }
+      ],
+      puzzles: [
+        /* ---------- 1. 곤충 관찰실 ---------- */
+        { id: 'q01', diff: '하', room: 0, title: '애벌레는 몇 배 자랐을까?', lesson: '2차시',
+          story: '애벌레의 길이가 2.4 cm에서 7.2 cm가 되었어요. cm를 mm로 바꾸면 자연수의 나눗셈으로 구할 수 있어요.',
+          instructions: '바퀴를 돌려 세 칸의 숫자를 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '7.2 cm는 몇 mm일까요?', format: '##', answer: '72', unit: 'mm' },
+            { label: '2.4 cm는 몇 mm일까요?', format: '##', answer: '24', unit: 'mm' },
+            { label: '7.2 cm는 2.4 cm의 몇 배일까요?', format: '#', answer: '3', unit: '배' } ] }],
+          hints: ['1 cm = 10 mm예요. 7.2 cm는 7 cm와 0.2 cm를 합한 길이예요.', '72÷24를 계산하면 7.2÷2.4의 몫과 같아요.'],
+          explanation: '7.2 cm = 72 mm, 2.4 cm = 24 mm이고 72÷24 = 3이에요. 그래서 7.2÷2.4 = 3, 애벌레는 3배 자랐어요.' },
+        { id: 'q02', diff: '중', room: 0, title: '몫이 같은 짝 찾기', lesson: '2~3차시',
+          story: '관찰실 벽에 나눗셈 카드가 흩어져 있어요. 몫이 같은 식끼리 짝을 지어야 상자가 열려요.',
+          instructions: '왼쪽 식을 누르고, 몫이 같은 오른쪽 식을 누르세요. 쓰이지 않는 카드도 있어요.',
+          parts: [{ type: 'match',
+            left: [ { id: 'a', label: '6.3 ÷ 0.7' }, { id: 'b', label: '1.84 ÷ 0.46' }, { id: 'c', label: '25.6 ÷ 3.2' } ],
+            right: [ { id: 'r1', label: '256 ÷ 32' }, { id: 'r2', label: '1840 ÷ 46' }, { id: 'r3', label: '63 ÷ 7' }, { id: 'r4', label: '184 ÷ 46' } ],
+            answer: { a: 'r3', b: 'r4', c: 'r1' } }],
+          hints: ['두 수에 똑같이 10배 또는 100배를 한 식을 찾아요.', '1.84와 0.46은 소수 두 자리 수예요. 둘 다 100배 하면?'],
+          explanation: '6.3÷0.7 = 63÷7 = 9, 1.84÷0.46 = 184÷46 = 4, 25.6÷3.2 = 256÷32 = 8이에요. 1840÷46은 나누어지는 수만 1000배 해서 몫이 달라져요.' },
+        { id: 'q03', diff: '중', room: 0, title: '표본 상자의 식', lesson: '2~3차시', card: '3',
+          story: '마지막 상자에 나눗셈 식이 잔뜩 붙어 있어요. 원리를 쓰면 빨리 풀 수 있어요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '몫이 다른 하나는?', options: ['3.6 ÷ 0.4', '36 ÷ 4', '0.36 ÷ 0.04', '360 ÷ 40', '36 ÷ 0.4'], answer: 4 },
+            { q: '19.38 ÷ 5.7과 몫이 같은 것은?', options: ['1.938 ÷ 5.7', '193.8 ÷ 57', '19.38 ÷ 57', '193.8 ÷ 5.7', '1938 ÷ 5.7'], answer: 1 },
+            { q: '31.92 ÷ 0.84를 분수의 나눗셈으로 바르게 나타낸 것은?', options: ['3192/100 ÷ 84/100', '3192/10 ÷ 84/10', '3192/100 ÷ 84/10', '3192/10 ÷ 84/100', '3192 ÷ 84/100'], answer: 0 } ] }],
+          hints: ['두 수에 똑같이 10배, 100배를 했는지 살펴봐요. 한쪽만 바꾸면 몫이 달라져요.', '31.92와 0.84는 소수 두 자리 수라서 분모가 100인 분수로 나타내요.'],
+          explanation: '36÷0.4만 몫이 90이고 나머지는 모두 9예요. 19.38÷5.7은 두 수를 10배 한 193.8÷57과 몫이 같아요(3.4). 31.92 = 3192/100, 0.84 = 84/100이므로 3192/100 ÷ 84/100 = 3192÷84 = 38이에요.' },
+
+        /* ---------- 2. 새 관측대 ---------- */
+        { id: 'q04', diff: '중', room: 1, title: '황새의 날개', lesson: '4차시',
+          story: '황새가 접었던 날개를 활짝 폈어요. 접었을 때 0.5 m, 펼쳤을 때 2.25 m예요.',
+          instructions: '펼친 날개는 접은 날개의 몇 배인지 자물쇠를 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '2.25 ÷ 0.5 =', format: '#.#', answer: '4.5', unit: '배' } ] }],
+          hints: ['먼저 어림해 봐요. 2.25는 2쯤, 0.5는 반이니까 약 4배예요.', '두 수를 10배 하면 22.5÷5가 돼요.'],
+          explanation: '2.25÷0.5 = 22.5÷5 = 4.5예요. 펼친 날개는 접은 날개의 4.5배예요.' },
+        { id: 'q05', diff: '중', room: 1, title: '나눗셈 계산판', lesson: '4차시',
+          story: '관측대 벽의 계산판에 빈칸이 네 개 있어요. 화살표 방향으로 나누어 빈칸을 채워야 해요.',
+          instructions: '→ 방향은 왼쪽 수를 오른쪽 수로, ↓ 방향은 위의 수를 아래 수로 나누어 빈칸을 채우세요.',
+          figure: { kind: 'divtable', cells: [['12.6', '4.2', '㉠'], ['0.18', '0.6', '㉡'], ['㉢', '㉣', '']] },
+          parts: [{ type: 'lock', fields: [
+            { label: '㉠', format: '#', answer: '3', unit: '' }, { label: '㉡', format: '#.#', answer: '0.3', unit: '' },
+            { label: '㉢', format: '##', answer: '70', unit: '' }, { label: '㉣', format: '#', answer: '7', unit: '' } ] }],
+          hints: ['㉠ = 12.6÷4.2, ㉢ = 12.6÷0.18', '0.18÷0.6은 두 수를 100배 하면 18÷60이에요.'],
+          explanation: '㉠ 12.6÷4.2 = 3, ㉡ 0.18÷0.6 = 0.3, ㉢ 12.6÷0.18 = 70, ㉣ 4.2÷0.6 = 7이에요.' },
+        { id: 'q06', diff: '중', room: 1, title: '몫의 크기 줄 세우기', lesson: '4차시', card: '6',
+          story: '기록판의 나눗셈 네 개를 몫이 작은 것부터 차례로 눌러야 상자가 열려요.',
+          instructions: '몫이 가장 작은 식부터 차례로 누르세요. 다시 누르면 취소돼요.',
+          parts: [{ type: 'order',
+            items: [ { id: 'a', label: '5.4 ÷ 0.18' }, { id: 'b', label: '1.35 ÷ 2.7' }, { id: 'c', label: '1.8 ÷ 0.75' }, { id: 'd', label: '0.84 ÷ 0.7' } ],
+            answer: ['b', 'd', 'c', 'a'] }],
+          hints: ['먼저 어림해요. 나누어지는 수가 나누는 수보다 작은 식은 몫이 1보다 작아요.', '5.4÷0.18 = 540÷18, 1.8÷0.75 = 180÷75예요.'],
+          explanation: '1.35÷2.7 = 0.5, 0.84÷0.7 = 1.2, 1.8÷0.75 = 2.4, 5.4÷0.18 = 30이에요.' },
+
+        /* ---------- 3. 바다 수조 ---------- */
+        { id: 'q07', diff: '하', room: 2, title: '돛새치의 속력', lesson: '5차시',
+          story: '돛새치는 1.5시간에 180 km를 헤엄칠 수 있어요. 한 시간 동안에는 몇 km를 헤엄칠까요?',
+          instructions: '자물쇠를 돌려 한 시간 동안 헤엄치는 거리를 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '180 ÷ 1.5 =', format: '###', answer: '120', unit: 'km' } ] }],
+          hints: ['몫을 어림해 봐요. 1.5시간에 180 km면, 1시간에는 180보다 적게 가요.', '두 수를 10배 하면 1800÷15예요.'],
+          explanation: '180÷1.5 = 1800÷15 = 120이에요. 돛새치는 한 시간에 120 km를 헤엄쳐요.' },
+        { id: 'q08', diff: '중', room: 2, title: '수조 물 분류', lesson: '5차시',
+          story: '수조 관리 기계가 나눗셈 카드를 두 바구니로 나누어 달래요.',
+          instructions: '카드를 누른 뒤 담을 바구니를 누르세요.',
+          parts: [{ type: 'sort',
+            items: [ { id: 'a', label: '40 ÷ 0.8' }, { id: 'b', label: '6 ÷ 0.75' }, { id: 'c', label: '14 ÷ 0.2' }, { id: 'd', label: '11 ÷ 2.75' }, { id: 'e', label: '30 ÷ 2.5' }, { id: 'f', label: '5 ÷ 1.25' } ],
+            buckets: [ { id: 'big', label: '몫이 10보다 큰 식' }, { id: 'small', label: '몫이 10보다 작은 식' } ],
+            answer: { a: 'big', c: 'big', e: 'big', b: 'small', d: 'small', f: 'small' } }],
+          hints: ['나누는 수에 10을 곱한 값이 나누어지는 수보다 작으면 몫은 10보다 커요.', '0.8×10 = 8은 40보다 작아요. 그럼 40÷0.8은?'],
+          explanation: '40÷0.8 = 50, 14÷0.2 = 70, 30÷2.5 = 12는 10보다 크고, 6÷0.75 = 8, 11÷2.75 = 4, 5÷1.25 = 4는 10보다 작아요.' },
+        { id: 'q09', diff: '중', room: 2, title: '먹이 창고 계산', lesson: '5차시', card: '5',
+          story: '수조 옆 먹이 창고 문에 문제 세 개가 붙어 있어요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '물이 1분에 2.5 L씩 나오는 수도로 수조에 물 30 L를 받으려면 몇 분이 걸릴까요?', options: ['1.2분', '7.5분', '10분', '12분', '75분'], answer: 3 },
+            { q: '넓이가 54 cm²이고 밑변이 4.5 cm인 평행사변형 모양 안내판의 높이는?', options: ['1.2 cm', '2.4 cm', '12 cm', '24 cm', '120 cm'], answer: 2 },
+            { q: '36, 27, 1.5, 4.5 중 두 수로 (자연수)÷(소수)를 만들 때 몫이 가장 큰 식은?', options: ['27 ÷ 4.5', '36 ÷ 4.5', '27 ÷ 1.5', '36 ÷ 1.5'], answer: 3 } ] }],
+          hints: ['(받을 물의 양)÷(1분에 나오는 물의 양)', '평행사변형의 넓이 = (밑변)×(높이)이므로 높이 = (넓이)÷(밑변)'],
+          explanation: '30÷2.5 = 300÷25 = 12(분)이에요. 높이는 54÷4.5 = 540÷45 = 12(cm)예요. 가장 큰 수 36을 가장 작은 수 1.5로 나눈 36÷1.5 = 24가 가장 커요.' },
+
+        /* ---------- 4. 공방 ---------- */
+        { id: 'q10', diff: '중', room: 3, title: '방석의 가로', lesson: '6차시',
+          story: '넓이가 약 2 m²인 직사각형 방석을 만들어요. 세로가 0.7 m이면 가로는 2÷0.7 = 2.857…로 끝없이 이어져요.',
+          instructions: '가로를 반올림하여 소수 첫째 자리까지 나타내세요.',
+          parts: [{ type: 'lock', fields: [ { label: '2 ÷ 0.7의 몫을 반올림하여 소수 첫째 자리까지', format: '#.#', answer: '2.9', unit: 'm' } ] }],
+          hints: ['소수 첫째 자리까지 나타내려면 소수 둘째 자리 숫자를 봐요.', '2.857…에서 소수 둘째 자리 숫자는 5예요. 5 이상이면 올려요.'],
+          explanation: '2÷0.7 = 2.857…이에요. 소수 둘째 자리 숫자가 5이므로 올려서 2.9 m예요.' },
+        { id: 'q11', diff: '중', room: 3, title: '어림 기계 짝짓기', lesson: '6차시',
+          story: '공방의 어림 기계 세 대가 각각 다른 방법으로 몫을 간단히 나타내요.',
+          instructions: '왼쪽 기계를 누르고, 그 기계가 내놓을 값을 오른쪽에서 누르세요.',
+          parts: [{ type: 'match',
+            left: [ { id: 'a', label: '3.9 ÷ 0.8 → 올림하여 소수 첫째 자리까지' }, { id: 'b', label: '1 ÷ 3 → 반올림하여 소수 둘째 자리까지' }, { id: 'c', label: '18.3 ÷ 7 → 버림하여 일의 자리까지' } ],
+            right: [ { id: 'r1', label: '4.8' }, { id: 'r2', label: '2' }, { id: 'r3', label: '0.33' }, { id: 'r4', label: '4.9' }, { id: 'r5', label: '0.34' } ],
+            answer: { a: 'r4', b: 'r3', c: 'r2' } }],
+          hints: ['먼저 몫을 구해요. 3.9÷0.8 = 4.875, 1÷3 = 0.333…, 18.3÷7 = 2.61…', '올림은 버릴 자리에 0이 아닌 숫자가 있으면 올리고, 버림은 그냥 버려요.'],
+          explanation: '3.9÷0.8 = 4.875 → 올림하면 4.9, 1÷3 = 0.333… → 반올림하면 0.33, 18.3÷7 = 2.61… → 버림하면 2예요.' },
+        { id: 'q12', diff: '중', room: 3, title: '민재의 풀이 고치기', lesson: '6차시', card: '2',
+          story: '공방 게시판에 민재가 1.7 ÷ 2.3의 몫을 반올림하여 소수 둘째 자리까지 구한 풀이가 붙어 있어요. 그런데 틀렸대요.',
+          instructions: '틀린 이유를 쓰고, 몫을 바르게 구해 자물쇠에 맞추세요.',
+          figure: { kind: 'work', title: '민재의 풀이 (두 수의 소수점을 한 칸씩 옮겨 계산)', lines: ['      0.73', '23 ) 17.00', '     16 1', '        90', '        69', '        21', '', '→ 몫: 0.73'] },
+          parts: [{ type: 'write', prompt: '틀린 이유', placeholder: '예: 반올림하려면 몫을 소수 ○째 자리까지 …', fields: [ { label: '바르게 구한 몫 (반올림, 소수 둘째 자리까지)', format: '#.##', answer: '0.74', unit: '' } ] }],
+          hints: ['소수 둘째 자리까지 반올림하려면 소수 셋째 자리 숫자를 봐야 해요.', '17÷23 = 0.739…예요. 소수 셋째 자리 숫자는 9예요.'],
+          explanation: '반올림하여 소수 둘째 자리까지 나타내려면 몫을 소수 셋째 자리까지 구해야 해요. 1.7÷2.3 = 0.739…이고 소수 셋째 자리 숫자가 9이므로 올려서 0.74예요. 민재는 소수 둘째 자리에서 계산을 멈춰 버림한 것과 같아요.' },
+
+        /* ---------- 5. 펭귄 사육장 ---------- */
+        { id: 'q13', diff: '중', room: 4, title: '펭귄 먹이 양동이', lesson: '7차시',
+          story: '펭귄 먹이 9.9 kg을 양동이에 2.2 kg씩 나누어 담아요. 양동이 수는 자연수여야 해요.',
+          instructions: '양동이 수와 남는 먹이의 무게를 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '먹이를 담은 양동이 수', format: '#', answer: '4', unit: '개' },
+            { label: '남는 먹이의 무게', format: '#.#', answer: '1.1', unit: 'kg' } ] }],
+          hints: ['9.9에서 2.2를 몇 번 뺄 수 있는지 세어 봐요.', '2.2×4 = 8.8이에요. 9.9에서 8.8을 빼면?'],
+          explanation: '9.9÷2.2의 몫을 자연수까지 구하면 4이고, 9.9 − 2.2×4 = 1.1이에요. 확인: 2.2×4 + 1.1 = 9.9' },
+        { id: 'q14', diff: '중', room: 4, title: '누구의 계산이 맞을까?', lesson: '7차시', card: '7',
+          story: '사육사들이 남는 양을 계산한 기록을 검사해 주세요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '찰흙 16.2 kg을 4 kg씩 나누어 가져요. 서진: “남는 찰흙은 2 kg”, 지혜: “남는 찰흙은 0.2 kg”. 바르게 구한 사람은?', options: ['서진', '지혜', '둘 다 맞다', '둘 다 틀렸다'], answer: 1 },
+            { q: '시루떡 12.1 kg을 한 명에게 2.4 kg씩 나누어 주면 남는 떡은 몇 kg일까요?', options: ['0.1 kg', '1 kg', '0.5 kg', '2.1 kg'], answer: 0 },
+            { q: '블루베리 8.8 kg을 0.6 kg씩 상자에 담고 남은 블루베리로 한 상자를 더 만들려면 몇 kg이 더 필요할까요?', options: ['0.2 kg', '0.4 kg', '0.6 kg', '1.4 kg'], answer: 0 } ] }],
+          hints: ['남는 양은 나누는 수보다 작아야 해요. 4×4 + (남는 양) = 16.2', '8.8÷0.6의 몫은 14, 0.6×14 = 8.4예요.'],
+          explanation: '4×4 + 0.2 = 16.2이므로 지혜가 맞아요. 12.1 − 2.4×5 = 0.1(kg)이에요. 8.8 − 0.6×14 = 0.4(kg)가 남으니 0.6 kg 한 상자를 채우려면 0.2 kg이 더 필요해요.' },
+        { id: 'q15', diff: '상', room: 4, title: '출구 문', lesson: '종합', final: true,
+          story: '출구 문에 카드 칸 네 개와 자물쇠가 있어요. 문에 새겨진 글: “모은 숫자 카드 중 네 장으로 □.□ ÷ □.□ 를 만들어라. 몫이 가장 큰 식만 문을 연다.”',
+          instructions: '1단계: 카드로 몫이 가장 큰 식을 만드세요. 2단계: 그 몫을 반올림하여 소수 첫째 자리까지 자물쇠에 맞추세요.',
+          parts: [
+            { type: 'build', stepTitle: '몫이 가장 큰 식 만들기', template: ['a', '.', 'b', '÷', 'c', '.', 'd'] },
+            { type: 'lock', stepTitle: '출구 자물쇠', fields: [ { label: '만든 식의 몫을 반올림하여 소수 첫째 자리까지', format: '#.#', answer: '3.3', unit: '' } ] } ],
+          hints: ['몫을 크게 하려면 나누어지는 수는 가장 크게, 나누는 수는 가장 작게 만들어요.', '7.6÷2.3을 계산해 봐요. 76÷23 = 3.30…'],
+          explanation: '나누어지는 수를 가장 큰 7.6, 나누는 수를 가장 작은 2.3으로 만들면 7.6÷2.3 = 3.304…이고, 반올림하여 소수 첫째 자리까지 나타내면 3.3이에요.' }
+      ]
+    },
+    { id: 'adv', label: '심화', floor: '지하 2층', code: 'B2', place: '비밀 연구 구역', blurb: '불빛이 희미한 가장 깊은 연구 구역',
+      story: '지하 2층 비밀 연구 구역은 불빛이 희미해요. 문제 하나에 두세 번 생각해야 열리는 자물쇠가 기다려요. 숫자 카드를 모아 극지 연구실의 출구를 여세요.',
+      dark: 0.64, themes: [5, 6, 7, 8, 9],
+      maps: [
+        [ '#######D########',
+          '#s.s.s....rr.rr#',
+          '#..............#',
+          '#.A....r.......#',
+          '#......r....B..#',
+          '#p.....N.......#',
+          '#..,,,,,,,,....#',
+          '#..,,,,,,,,..C.#',
+          '#p............p#',
+          '#......S.......#',
+          '################' ],
+        [ '###WW##D##WW####',
+          '#k....t....t..k#',
+          '#..............#',
+          '#..B......A....#',
+          '#....kk........#',
+          '#p......N.....p#',
+          '#..............#',
+          '#.ss.....C.....#',
+          '#..........k...#',
+          '#......S.......#',
+          '################' ],
+        [ '#######D########',
+          '#www.......www.#',
+          '#www..A....www.#',
+          '#..............#',
+          '#.wwwwww..wwww.#',
+          '#.wwwwww..wwww.#',
+          '#.......N...B..#',
+          '#.ww.......C...#',
+          '#.ww...........#',
+          '#......S.......#',
+          '################' ],
+        [ '#######D########',
+          '#bbbb...t..bbbb#',
+          '#..............#',
+          '#.c..A.....c...#',
+          '#..tt....tt....#',
+          '#p.....N......p#',
+          '#...........B..#',
+          '#..C...,,,,....#',
+          '#.c....,,,,..c.#',
+          '#......S.......#',
+          '################' ],
+        [ '#######C########',
+          '#..............#',
+          '#.g..iii..iii..#',
+          '#..............#',
+          '#..A.....g...B.#',
+          '#wwww..N...wwww#',
+          '#wwww......wwww#',
+          '#..g.......g...#',
+          '#.ii........ii.#',
+          '#......S.......#',
+          '################' ]
+      ],
+      rooms: [
+        { name: '표본 보관실', short: '표본', topic: '(소수)÷(소수)의 원리',
+          log: '선반마다 곤충 표본병이 줄지어 있어요. 무게표에는 소수가 가득하고, 몇 개는 잘못 계산된 채로 남아 있어요.',
+          note: { title: '관찰 노트 · 몫이 같은 식 찾기', text: '두 수에 똑같이 10배, 100배 하거나 똑같이 1/10배 하면 몫은 그대로예요. 한쪽만 바꾸면 몫도 바뀌어요. 나누는 수만 10배 하면 몫은 1/10배가 돼요.' } },
+        { name: '기상 관측탑', short: '관측탑', topic: '자릿수가 다른 (소수)÷(소수)',
+          log: '바람 측정기와 망원경이 돌아가는 관측탑이에요. 관측 기록과 키 재기 기록이 뒤섞여 있어요. 단위가 서로 다른 기록도 있어요.',
+          note: { title: '관찰 노트 · 몫의 크기 어림하기', text: '0보다 큰 수를 1보다 작은 수로 나누면 몫은 나누어지는 수보다 커지고, 1보다 큰 수로 나누면 작아져요. 계산 전에 몫의 크기를 먼저 어림해 보세요.' } },
+        { name: '심해 수조', short: '심해', topic: '(자연수)÷(소수)와 문제 해결',
+          log: '깊고 어두운 수조 사이로 청새치와 돛새치가 지나가요. 먹이 영수증과 수조 설계도가 책상 위에 놓여 있어요.',
+          note: { title: '관찰 노트 · 무엇을 무엇으로 나눌까?', text: '“1 kg의 값”은 (전체 값)÷(전체 무게), “한 시간에 가는 거리”는 (전체 거리)÷(걸린 시간)이에요. 무엇을 구하는지 먼저 정하고 식을 세워요.' } },
+        { name: '설계실', short: '설계', topic: '몫을 어림하여 나타내기',
+          log: '연구 장비를 만드는 설계실이에요. 설계도마다 “몫은 상황에 맞게 나타낼 것”이라고 빨간 글씨로 적혀 있어요.',
+          note: { title: '관찰 노트 · 올림일까, 버림일까?', text: '모자라면 안 되는 상황(필요한 횟수, 상자 수)은 올림, 다 채운 것만 세는 상황(만들 수 있는 개수)은 버림, 간단히 나타낼 때는 반올림을 써요.' } },
+        { name: '극지 연구실', short: '극지', topic: '나누어 주고 남는 양',
+          log: '얼음 사이로 펭귄들이 뒤뚱거려요. 보급품 창고의 기록에는 남는 양이 적혀 있는데, 틀린 기록도 섞여 있어요. 그 너머에 마지막 출구가 있어요.',
+          note: { title: '관찰 노트 · 검산으로 확인하기', text: '(나누는 수)×(몫)+(남는 양) = (나누어지는 수)가 되는지 확인해요. 남는 양은 언제나 나누는 수보다 작아야 해요.' } }
+      ],
+      puzzles: [
+        /* ---------- 1. 표본 보관실 ---------- */
+        { id: 'h01', diff: '중', room: 0, title: '두 번 나누는 표본', lesson: '2~3차시',
+          story: '표본병의 무게 3.32 g을 0.8로 나누고, 그 몫을 다시 0.5로 나누어야 보관함 번호가 나와요.',
+          instructions: '두 번 나눈 결과를 자물쇠에 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '3.32 ÷ 0.8 ÷ 0.5 =', format: '#.#', answer: '8.3', unit: '' } ] }],
+          hints: ['앞에서부터 차례로 계산해요. 3.32÷0.8은 두 수를 100배 하면 332÷80이에요.', '3.32÷0.8 = 4.15예요. 이제 4.15÷0.5를 계산해요.'],
+          explanation: '3.32÷0.8 = 4.15, 4.15÷0.5 = 8.3이에요.' },
+        { id: 'h02', diff: '상', room: 0, title: '몫의 모양 살피기', lesson: '2~4차시',
+          story: '표본 무게표에 식이 잔뜩 적혀 있어요. 몫을 끝까지 계산하지 않고도 찾을 수 있는 것도 있어요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '몫의 소수점 아래 자릿수가 다른 하나는?', options: ['9.72 ÷ 3.6', '6.65 ÷ 1.9', '3.06 ÷ 1.2', '8.16 ÷ 2.4', '5.13 ÷ 2.7'], answer: 2 },
+            { q: '216 ÷ 8 = 27일 때, 2.16 ÷ □ = 27이 되는 □는?', options: ['8', '0.8', '0.08', '0.008', '0.0008'], answer: 2 },
+            { q: '몫이 자연수가 아닌 나눗셈은?', options: ['117 ÷ 0.36', '51 ÷ 1.36', '99 ÷ 2.25', '63 ÷ 1.75', '8 ÷ 0.32'], answer: 1 } ] }],
+          hints: ['직접 계산해 봐요. 3.06÷1.2 → 30.6÷12', '두 수를 100배 해서 나누어떨어지는지 확인해요. 51÷1.36 → 5100÷136'],
+          explanation: '9.72÷3.6 = 2.7, 6.65÷1.9 = 3.5, 3.06÷1.2 = 2.55, 8.16÷2.4 = 3.4, 5.13÷2.7 = 1.9이므로 3.06÷1.2만 소수 두 자리예요. 2.16÷0.08 = 27이에요. 117÷0.36 = 325, 99÷2.25 = 44, 63÷1.75 = 36, 8÷0.32 = 25이고 51÷1.36 = 37.5만 자연수가 아니에요.' },
+        { id: 'h03', diff: '상', room: 0, title: '잘못 누른 계산기', lesson: '2~3차시', card: '7',
+          story: '연구원이 어떤 수를 0.6으로 나누어야 하는데, 잘못하여 0.6을 곱했더니 1.08이 나왔대요.',
+          instructions: '바른 값을 구하는 과정을 쓰고, 바르게 계산한 값을 자물쇠에 맞추세요.',
+          parts: [{ type: 'write', prompt: '구하는 과정', placeholder: '예: 어떤 수를 □라 하면 □×0.6 = 1.08이므로 …', fields: [ { label: '바르게 계산한 값', format: '#', answer: '3', unit: '' } ] }],
+          hints: ['먼저 어떤 수를 찾아요. (어떤 수)×0.6 = 1.08이에요.', '어떤 수는 1.08÷0.6 = 1.8이에요. 이제 1.8을 0.6으로 나눠요.'],
+          explanation: '(어떤 수)×0.6 = 1.08이므로 어떤 수는 1.08÷0.6 = 1.8이에요. 바르게 계산하면 1.8÷0.6 = 3이에요.' },
+
+        /* ---------- 2. 기상 관측탑 ---------- */
+        { id: 'h04', diff: '중', room: 1, title: '농구대와 키', lesson: '4차시',
+          story: '관측탑 체육실의 농구대 높이는 2.85 m이고, 민수의 키는 150 cm예요. 단위가 달라요!',
+          instructions: '농구대 높이는 민수 키의 몇 배인지 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '(농구대 높이) ÷ (민수의 키)', format: '#.#', answer: '1.9', unit: '배' } ] }],
+          hints: ['단위를 하나로 맞춰요. 150 cm는 몇 m일까요?', '2.85÷1.5 = 285÷150이에요.'],
+          explanation: '150 cm = 1.5 m이므로 2.85÷1.5 = 1.9(배)예요.' },
+        { id: 'h05', diff: '상', room: 1, title: '몫이 큰 순서', lesson: '4차시',
+          story: '바람 측정기 다섯 대가 나눗셈 식을 보여 줘요. 몫이 큰 것부터 차례로 눌러야 해요.',
+          instructions: '몫이 가장 큰 식부터 차례로 누르세요. 다시 누르면 취소돼요.',
+          parts: [{ type: 'order',
+            items: [ { id: 'a', label: '0.77 ÷ 0.7' }, { id: 'b', label: '4.2 ÷ 0.21' }, { id: 'c', label: '1.36 ÷ 3.4' }, { id: 'd', label: '7.7 ÷ 0.07' }, { id: 'e', label: '5.22 ÷ 1.8' } ],
+            answer: ['d', 'b', 'e', 'a', 'c'] }],
+          hints: ['나누는 수가 아주 작은 식은 몫이 아주 커져요. 7.7÷0.07 = 770÷7', '1.36÷3.4는 나누어지는 수가 더 작으니 몫이 1보다 작아요.'],
+          explanation: '7.7÷0.07 = 110, 4.2÷0.21 = 20, 5.22÷1.8 = 2.9, 0.77÷0.7 = 1.1, 1.36÷3.4 = 0.4예요.' },
+        { id: 'h06', diff: '상', room: 1, title: '번진 관측 기록', lesson: '4차시', card: '0',
+          story: '관측 기록 한 칸이 빗물에 번져 보이지 않아요. “4□.5 ÷ 1.5의 몫은 자연수”라는 메모만 남아 있어요.',
+          instructions: '□ 안에 들어갈 수 있는 숫자를 모두 고르세요.',
+          parts: [{ type: 'multi', q: '4□.5 ÷ 1.5의 몫이 자연수가 되도록 □ 안에 들어갈 수 있는 숫자를 모두 고르세요.', options: ['0', '2', '3', '5', '6'], answer: [0, 2, 4] }],
+          hints: ['두 수를 10배 하면 4□5 ÷ 15예요. 4□5가 15로 나누어떨어져야 해요.', '15의 배수는 3의 배수이면서 5의 배수예요. 각 자리 숫자의 합이 3의 배수인지 봐요.'],
+          explanation: '4□.5÷1.5 = 4□5÷15이므로 4□5가 15의 배수여야 해요. 405÷15 = 27, 435÷15 = 29, 465÷15 = 31이므로 □는 0, 3, 6이에요(9도 되지만 보기에 없어요). 425÷15, 455÷15는 나누어떨어지지 않아요.' },
+
+        /* ---------- 3. 심해 수조 ---------- */
+        { id: 'h07', diff: '상', room: 2, title: '누가 더 빠를까?', lesson: '5차시',
+          story: '청새치는 2.5시간에 200 km, 돛새치는 1.5시간에 180 km를 헤엄쳤어요.',
+          instructions: '한 시간 동안 돛새치가 청새치보다 몇 km 더 가는지 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '한 시간에 더 가는 거리', format: '##', answer: '40', unit: 'km' } ] }],
+          hints: ['두 물고기가 한 시간에 가는 거리를 각각 구해요. (거리)÷(시간)', '청새치 200÷2.5 = 80, 돛새치 180÷1.5 = ?'],
+          explanation: '청새치는 200÷2.5 = 80(km), 돛새치는 180÷1.5 = 120(km)를 한 시간에 가요. 차이는 120 − 80 = 40(km)예요.' },
+        { id: 'h08', diff: '상', room: 2, title: '먹이 영수증', lesson: '5차시',
+          story: '심해 물고기 먹이 2.2 kg을 사고 54780원을 냈다는 영수증이 있어요.',
+          instructions: '먹이 100 g의 가격을 자물쇠에 맞추세요.',
+          parts: [{ type: 'lock', fields: [ { label: '먹이 100 g의 가격', format: '####', answer: '2490', unit: '원' } ] }],
+          hints: ['먼저 1 kg의 가격을 구해요. 54780÷2.2', '100 g은 1 kg의 1/10이에요.'],
+          explanation: '1 kg의 가격은 54780÷2.2 = 24900(원)이고, 100 g은 그 1/10인 2490원이에요.' },
+        { id: 'h09', diff: '상', room: 2, title: '테이프 이어 붙이기', lesson: '5차시·종합', card: '3',
+          story: '수조 유리벽을 꾸미려고 길이가 12.6 cm인 색 테이프를 0.8 cm씩 겹쳐서 한 줄로 길게 이어 붙여요.',
+          instructions: '두 칸의 숫자를 맞추세요.',
+          figure: { kind: 'tape', len: '12.6 cm', overlap: '0.8 cm' },
+          parts: [{ type: 'lock', fields: [
+            { label: '테이프 3장을 이어 붙인 전체 길이', format: '##.#', answer: '36.2', unit: 'cm' },
+            { label: '전체 길이가 236.8 cm일 때 이어 붙인 테이프 수', format: '##', answer: '20', unit: '장' } ] }],
+          hints: ['3장을 이으면 겹친 곳은 2군데예요. 12.6×3 − 0.8×2', '한 장 더 붙일 때마다 12.6 − 0.8 = 11.8 cm씩 늘어나요. (전체 길이 − 0.8)÷11.8'],
+          explanation: '3장: 12.6×3 − 0.8×2 = 37.8 − 1.6 = 36.2(cm)예요. 한 장 더 붙일 때마다 11.8 cm씩 늘어나므로 (236.8 − 0.8)÷11.8 = 236÷11.8 = 20(장)이에요. 확인: 12.6×20 − 0.8×19 = 252 − 15.2 = 236.8' },
+
+        /* ---------- 4. 설계실 ---------- */
+        { id: 'h10', diff: '상', room: 3, title: '뇌의 무게 비교', lesson: '9차시',
+          story: '설계실 벽에 동물 뇌의 무게표가 붙어 있어요. 기린 0.68 kg, 양 0.14 kg, 사자 0.24 kg.',
+          instructions: '기린의 뇌는 양의 뇌의 몇 배인지 반올림하여 소수 둘째 자리까지 나타내세요.',
+          parts: [{ type: 'lock', fields: [ { label: '0.68 ÷ 0.14의 몫 (반올림, 소수 둘째 자리까지)', format: '#.##', answer: '4.86', unit: '배' } ] }],
+          hints: ['소수 둘째 자리까지 나타내려면 몫을 소수 셋째 자리까지 구해요.', '68÷14 = 4.857…이에요. 소수 셋째 자리 숫자는 7이에요.'],
+          explanation: '0.68÷0.14 = 4.857…이에요. 소수 셋째 자리 숫자가 7이므로 올려서 4.86배예요.' },
+        { id: 'h11', diff: '상', room: 3, title: '상황에 맞는 어림', lesson: '6차시',
+          story: '설계실 기계 세 대가 각각 다른 상황의 몫을 내놓아야 해요. 상황을 잘 읽어야 해요.',
+          instructions: '왼쪽 상황을 누르고, 알맞은 답을 오른쪽에서 누르세요.',
+          parts: [{ type: 'match',
+            left: [ { id: 'a', label: '끈 6 m를 0.7 m씩 잘라 만들 수 있는 끈 도막 수' }, { id: 'b', label: '장비 30 kg을 한 번에 4.5 kg까지 옮길 수 있는 로봇이 모두 옮기는 횟수' }, { id: 'c', label: '사람 뇌 1.35 kg은 침팬지 뇌 0.42 kg의 약 몇 배? (반올림, 소수 첫째 자리)' } ],
+            right: [ { id: 'r1', label: '9도막' }, { id: 'r2', label: '7번' }, { id: 'r3', label: '3.2배' }, { id: 'r4', label: '8도막' }, { id: 'r5', label: '6번' }, { id: 'r6', label: '3.3배' } ],
+            answer: { a: 'r4', b: 'r2', c: 'r3' } }],
+          hints: ['6÷0.7 = 8.5…, 30÷4.5 = 6.6…, 1.35÷0.42 = 3.21…', '끈 도막은 다 채운 것만 세고(버림), 옮기는 횟수는 남은 짐도 옮겨야 해요(올림).'],
+          explanation: '6÷0.7 = 8.5…에서 온전한 도막은 8도막(버림), 30÷4.5 = 6.6…이라 남은 짐까지 옮기려면 7번(올림), 1.35÷0.42 = 3.21…을 반올림하면 3.2배예요.' },
+        { id: 'h12', diff: '상', room: 3, title: '드론의 속력', lesson: '6차시', card: '4',
+          story: '설계실에서 만든 드론이 1시간 24분 동안 100 km를 날았어요.',
+          instructions: '시간을 소수로 바꾸고, 한 시간 동안 나는 거리를 반올림하여 소수 첫째 자리까지 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '1시간 24분은 몇 시간?', format: '#.#', answer: '1.4', unit: '시간' },
+            { label: '한 시간 동안 나는 거리 (반올림, 소수 첫째 자리까지)', format: '##.#', answer: '71.4', unit: 'km' } ] }],
+          hints: ['24분은 1시간(60분)의 24/60 = 0.4예요.', '100÷1.4 = 1000÷14 = 71.42…'],
+          explanation: '24분 = 24/60시간 = 0.4시간이므로 1시간 24분 = 1.4시간이에요. 100÷1.4 = 71.42…이고 소수 둘째 자리 숫자가 2라서 버려 71.4 km예요.' },
+
+        /* ---------- 5. 극지 연구실 ---------- */
+        { id: 'h13', diff: '중', room: 4, title: '물통 나누기', lesson: '7차시',
+          story: '정수기 물 15.21 L를 한 통에 1.3 L씩 나누어 담아요. 통 수는 자연수여야 해요.',
+          instructions: '물을 담은 통 수와 남는 물의 양을 맞추세요.',
+          parts: [{ type: 'lock', fields: [
+            { label: '물을 담은 통 수', format: '##', answer: '11', unit: '통' },
+            { label: '남는 물의 양', format: '#.##', answer: '0.91', unit: 'L' } ] }],
+          hints: ['15.21÷1.3을 몫이 자연수가 될 때까지만 계산해요.', '1.3×11 = 14.3이에요. 15.21에서 빼면?'],
+          explanation: '15.21÷1.3의 몫을 자연수까지 구하면 11이고, 15.21 − 1.3×11 = 0.91(L)이에요. 확인: 1.3×11 + 0.91 = 15.21' },
+        { id: 'h14', diff: '상', room: 4, title: '보급품 기록 검사', lesson: '7차시·종합', card: '9',
+          story: '보급품 창고 기록 세 줄을 검사해 주세요.',
+          instructions: '세 문제의 답을 모두 고르세요.',
+          parts: [{ type: 'choice', questions: [
+            { q: '고구마 18.8 kg을 4 kg씩 상자에 담았더니 “4상자, 남는 고구마 0.7 kg”이라고 적혀 있어요. 바른 남는 양은?', options: ['0.28 kg', '0.7 kg', '2.8 kg', '4.7 kg', '7 kg'], answer: 2 },
+            { q: '얼음 9.5 kg을 0.8 kg씩 봉지에 담고 남은 얼음으로 한 봉지를 더 채우려면 얼음이 적어도 몇 kg 더 필요할까요?', options: ['0.07 kg', '0.1 kg', '0.7 kg', '0.8 kg', '1.5 kg'], answer: 1 },
+            { q: '대원 지호의 몸무게는 민수의 0.8배이고, 민수의 몸무게는 수아의 1.25배예요. 지호가 36 kg이면 수아는 몇 kg일까요?', options: ['28.8 kg', '36 kg', '40 kg', '45 kg', '56.25 kg'], answer: 1 } ] }],
+          hints: ['18.8 − 4×4를 계산해 보세요. 남는 양은 나누는 수 4보다 작아야 해요.', '지호 → 민수: 36÷0.8, 민수 → 수아: ÷1.25'],
+          explanation: '18.8 − 4×4 = 2.8(kg)이에요. 9.5 − 0.8×11 = 0.7(kg)이 남으니 0.8 − 0.7 = 0.1(kg)이 더 필요해요. 민수는 36÷0.8 = 45(kg), 수아는 45÷1.25 = 36(kg)이에요.' },
+        { id: 'h15', diff: '상', room: 4, title: '극지 출구', lesson: '10차시 종합', final: true,
+          story: '출구 문에 카드 칸 네 개와 자물쇠가 있어요. 문에 새겨진 글: “모은 숫자 카드 다섯 장 중 네 장으로 □.□ ÷ □.□ 를 만들어라. 몫이 가장 큰 식만 문을 연다.”',
+          instructions: '1단계: 카드로 몫이 가장 큰 식을 만드세요. 2단계: 그 몫을 반올림하여 소수 둘째 자리까지 자물쇠에 맞추세요.',
+          parts: [
+            { type: 'build', stepTitle: '몫이 가장 큰 식 만들기', template: ['a', '.', 'b', '÷', 'c', '.', 'd'] },
+            { type: 'lock', stepTitle: '출구 자물쇠', fields: [ { label: '만든 식의 몫을 반올림하여 소수 둘째 자리까지', format: '##.##', answer: '32.33', unit: '' } ] } ],
+          hints: ['나누어지는 수는 가장 크게, 나누는 수는 가장 작게! 0도 쓸 수 있어요.', '9.7÷0.3 = 97÷3 = 32.333…'],
+          explanation: '나누어지는 수를 가장 큰 9.7, 나누는 수를 가장 작은 0.3으로 만들면 9.7÷0.3 = 32.333…이고, 반올림하여 소수 둘째 자리까지 나타내면 32.33이에요.' }
+      ]
+    }
+  ]
+};
+
+/* ===================================================================
+   저장소 (브라우저 / 결과 전송)
+=================================================================== */
+const LS_RUN = 'escape:' + UNIT.id + ':run';
+const LS_DEMO = 'escape:' + UNIT.id + ':demo-results';
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+const Backend = (() => {
+  const gas = (typeof google !== 'undefined' && google.script && google.script.run) ? google.script.run : null;
+  const mode = gas ? 'gas' : (CONFIG.ENDPOINT ? 'url' : 'demo');
+  function gasCall(fn, arg) {
+    return new Promise((res, rej) => gas.withSuccessHandler(res).withFailureHandler(rej)[fn](arg));
+  }
+  function save(rec) {
+    if (mode === 'gas') return gasCall('saveResult', rec);
+    if (mode === 'url') return fetch(CONFIG.ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(rec) });
+    const all = lsGet(LS_DEMO, {}); all[rec.runId] = Object.assign({}, rec, { savedAt: new Date().toISOString() }); lsSet(LS_DEMO, all);
+    return Promise.resolve();
+  }
+  function load(key) {
+    if (mode === 'gas') return gasCall('getResults', key);
+    if (mode === 'url') return fetch(CONFIG.ENDPOINT + '?action=results&key=' + encodeURIComponent(key)).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); return d.rows; });
+    return Promise.resolve(Object.values(lsGet(LS_DEMO, {})));
+  }
+  return { mode, save, load };
+})();
+
+/* ===================================================================
+   상태
+=================================================================== */
+let L = UNIT.levels[0], P = L.puzzles;
+function setLevel(id) { L = UNIT.levels.find(l => l.id === id) || UNIT.levels[0]; P = L.puzzles; }
+let pickLevel = null;
+let S = null;          // 진행 상태(저장됨)
+let view = 'start';    // start | room | puzzle | result | teacher
+let work = null;       // 현재 문제 조작 상태
+let fb = null;         // 피드백
+let showNote = false;
+let overlay = null;    // {kind:'card', card} | {kind:'final'}
+let syncState = '';
+let teacherData = null, teacherKey = '', teacherErr = '', teacherCls = '', teacherLevel = 'easy';
+
+function newRun(student, level) {
+  return { unit: UNIT.id, level: level || L.id, runId: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), student,
+    current: 0, part: 0, viewRoom: 0, pos: null, hintTokens: UNIT.hintTokens, cards: [], results: {}, solvedView: false,
+    startedAt: Date.now(), elapsedMs: 0, runningSince: Date.now(), finishedAt: null };
+}
+function elapsed() { return S ? S.elapsedMs + (S.runningSince ? Date.now() - S.runningSince : 0) : 0; }
+function res(pid) { return S.results[pid] || (S.results[pid] = { a: 0, h: 0, s: false, f: null }); }
+function persist() { if (S) lsSet(LS_RUN, S); }
+function score() { return P.filter(p => S.results[p.id] && S.results[p.id].f === true).length; }
+
+function record() {
+  const detail = {}; P.forEach(p => { const r = S.results[p.id]; if (r) detail[p.id] = r; });
+  const solved = P.filter(p => S.results[p.id] && S.results[p.id].s).length;
+  return { unit: UNIT.id, level: S.level || 'basic', runId: S.runId, cls: S.student.cls, num: S.student.num, name: S.student.name,
+    progress: solved, total: P.length, score: score(),
+    hints: Object.values(S.results).reduce((a, r) => a + r.h, 0),
+    wrong: Object.values(S.results).reduce((a, r) => a + Math.max(0, r.a - (r.s ? 1 : 0)), 0),
+    seconds: Math.round(elapsed() / 1000), done: !!S.finishedAt, startedAt: new Date(S.startedAt).toISOString(), detail };
+}
+function sync() {
+  syncState = '저장 중…'; paintSync();
+  Backend.save(record()).then(() => { syncState = Backend.mode === 'demo' ? '연습 모드 · 이 기기에 저장' : '선생님께 전송됨'; paintSync(); })
+    .catch(() => { syncState = '전송 실패 · 다음 문제에서 다시 보내요'; paintSync(); });
+}
+function paintSync() { document.querySelectorAll('[data-sync]').forEach(el => el.textContent = syncState); }
+
+/* ===================================================================
+   문제 조작 상태 / 채점
+=================================================================== */
+function curPart() { const p = P[S.current]; return p.parts[S.part]; }
+function initWork(part) {
+  switch (part.type) {
+    case 'choice': return { sel: {} };
+    case 'multi': return { sel: [] };
+    case 'write': return { vals: part.fields.map(f => f.format.split('').filter(c => c === '#').map(() => 0)), text: '' };
+    case 'ox': return { sel: {} };
+    case 'lock': return { vals: part.fields.map(f => f.format.split('').filter(c => c === '#').map(() => 0)) };
+    case 'match': return { pairs: {}, pick: null };
+    case 'sort': return { place: {}, pick: null };
+    case 'order': return { seq: [] };
+    case 'build': return { slots: {}, pickCard: null };
+  }
+}
+function fieldText(f, digits) { let i = 0; return f.format.split('').map(c => c === '#' ? digits[i++] : c).join(''); }
+function exprValue(slots) { return parseFloat(slots.a + '.' + slots.b) / parseFloat(slots.c + '.' + slots.d); }
+function bestBuild(cards) {
+  let best = -1;
+  const n = cards.length;
+  for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) for (let c = 0; c < n; c++) for (let d = 0; d < n; d++) {
+    if (new Set([a, b, c, d]).size < 4) continue;
+    if (cards[c] === '0' && cards[d] === '0') continue;
+    const v = exprValue({ a: cards[a], b: cards[b], c: cards[c], d: cards[d] });
+    if (isFinite(v) && v > best) best = v;
+  }
+  return best;
+}
+function check(part, w) {
+  switch (part.type) {
+    case 'multi': {
+      const set = new Set(w.sel), ans = new Set(part.answer);
+      if (!set.size) return { ok: false, incomplete: true, correct: 0, total: 1 };
+      const ok = set.size === ans.size && [...ans].every(i => set.has(i));
+      return { ok, correct: ok ? 1 : 0, total: 1, single: true };
+    }
+    case 'write': {
+      if ((w.text || '').trim().length < 5) return { ok: false, incomplete: true, needText: true, correct: 0, total: 1 };
+      const t = part.fields.length, c = part.fields.filter((f, i) => fieldText(f, w.vals[i]) === f.answer).length;
+      return { ok: c === t, correct: c, total: t, single: t === 1 };
+    }
+    case 'choice': {
+      const t = part.questions.length, done = Object.keys(w.sel).length;
+      const c = part.questions.filter((q, i) => w.sel[i] === q.answer).length;
+      return { ok: c === t, correct: c, total: t, incomplete: done < t };
+    }
+    case 'ox': {
+      const t = part.statements.length, done = Object.keys(w.sel).length;
+      const c = part.statements.filter((s, i) => w.sel[i] === s.answer).length;
+      return { ok: c === t, correct: c, total: t, incomplete: done < t };
+    }
+    case 'lock': {
+      const t = part.fields.length;
+      const c = part.fields.filter((f, i) => fieldText(f, w.vals[i]) === f.answer).length;
+      return { ok: c === t, correct: c, total: t, single: t === 1 };
+    }
+    case 'match': {
+      const keys = Object.keys(part.answer), t = keys.length;
+      const c = keys.filter(k => w.pairs[k] === part.answer[k]).length;
+      return { ok: c === t, correct: c, total: t, incomplete: Object.keys(w.pairs).length < t };
+    }
+    case 'sort': {
+      const keys = Object.keys(part.answer), t = keys.length;
+      const c = keys.filter(k => w.place[k] === part.answer[k]).length;
+      return { ok: c === t, correct: c, total: t, incomplete: Object.keys(w.place).length < t };
+    }
+    case 'order': {
+      const t = part.answer.length;
+      const c = part.answer.filter((id, i) => w.seq[i] === id).length;
+      return { ok: c === t, correct: c, total: t, incomplete: w.seq.length < t };
+    }
+    case 'build': {
+      const keys = part.template.filter(k => k.length === 1 && /[a-z]/.test(k));
+      const filled = keys.every(k => w.slots[k] != null);
+      if (!filled) return { ok: false, incomplete: true, correct: 0, total: 1 };
+      const sl = {}; keys.forEach(k => sl[k] = S.cards[w.slots[k]]);
+      const v = exprValue(sl);
+      return { ok: Math.abs(v - bestBuild(S.cards)) < 1e-9, correct: 0, total: 1, build: true };
+    }
+  }
+}
+
+/* ===================================================================
+   화면 그리기
+=================================================================== */
+const app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function fmtTime(ms) { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + '분 ' + String(s % 60).padStart(2, '0') + '초'; }
+function roomOf(i) { return P[i] ? P[i].room : L.rooms.length - 1; }
+function roomPuzzles(r) { return P.map((p, i) => ({ p, i })).filter(x => x.p.room === r); }
+function allCards() { return P.filter(p => p.card).map(p => p.card); }
+
+function render() {
+  let h = '';
+  if (view === 'start') h = renderStart();
+  else if (view === 'teacher') h = renderTeacher();
+  else {
+    h = renderRail();
+    if (view === 'room') h += renderRoom();
+    if (view === 'puzzle') h += renderPuzzle();
+    if (view === 'result') h += renderResult();
+  }
+  if (overlay) h += renderOverlay();
+  app.innerHTML = h;
+  paintSync();
+  if (overlay && overlay.kind === 'qr') drawQR();
+}
+
+function getAppUrl() {
+  if (Backend.mode === 'gas') return new Promise(res => google.script.run.withSuccessHandler(res).withFailureHandler(() => res('')).getAppUrl());
+  return Promise.resolve(CONFIG.ENDPOINT && Backend.mode === 'url' ? location.href.split('#')[0] : location.href.split('#')[0]);
+}
+function drawQR() {
+  const box = document.getElementById('qrbox'); if (!box) return;
+  if (!appUrl) { getAppUrl().then(u => { appUrl = u || location.href.split('#')[0]; if (overlay && overlay.kind === 'qr') render(); }); return; }
+  if (window.QRCode) { box.innerHTML = ''; new QRCode(box, { text: appUrl, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M }); }
+  else box.textContent = 'QR을 만들지 못했어요(인터넷 연결 확인). 아래 주소를 칠판에 적어 주세요.';
+}
+
+function renderStart() {
+  const saved = lsGet(LS_RUN, null);
+  const savedLv = saved && saved.unit === UNIT.id ? UNIT.levels.find(l => l.id === (saved.level || 'basic')) : null;
+  const canResume = !!(savedLv && !saved.finishedAt && saved.current < savedLv.puzzles.length);
+  const lv = UNIT.levels.find(l => l.id === pickLevel);
+  return `<section class="start">
+    <div class="eyebrow">${esc(UNIT.subject)} ${esc(UNIT.grade)} · ${esc(UNIT.unitName)} · 단원평가 방탈출</div>
+    <div class="start-grid">
+      <div class="start-copy">
+        <h1>${esc(UNIT.title[0])}<br><em>${esc(UNIT.title[1])}</em></h1>
+        <p class="lead">생태 연구 기지에 정전이 일어나 모든 문이 잠겼어요. 엘리베이터를 타고 탐사할 층으로 가서, 소수의 나눗셈으로 자물쇠를 열고 탈출하세요.</p>
+        ${canResume ? `<div class="row"><button class="btn primary" data-act="resume">${esc(saved.student.name)}, ${esc(savedLv.floor)} 이어서 하기 (${Object.values(saved.results).filter(r => r.s).length}/${savedLv.puzzles.length})</button><button class="btn ghost" data-act="forget">새로 시작</button></div>` : ''}
+      </div>
+      <div class="elev" role="radiogroup" aria-label="탐사할 층 고르기">
+        <div class="elev-screen"><span class="elev-arrow">${lv ? (lv.code === '1F' ? '■' : '▼') : '◆'}</span><b class="num">${lv ? esc(lv.code) : '--'}</b><span class="elev-place">${lv ? esc(lv.place) : '층을 고르세요'}</span></div>
+        <div class="elev-btns">${UNIT.levels.map(l => `<button class="ebtn ${l.id === pickLevel ? 'on' : ''}" data-act="level" data-id="${l.id}" role="radio" aria-checked="${l.id === pickLevel}"><span class="ecode num">${esc(l.code)}</span><span class="efloor">${esc(l.floor)}<small>${esc(l.blurb)}</small></span></button>`).join('')}</div>
+        <div class="elev-plate">RESEARCH LIFT · 생태 연구 기지</div>
+      </div>
+    </div>
+    ${canResume ? '' : `<div class="dossier">
+      ${lv ? `<div class="floorinfo"><b>${esc(lv.floor)} · ${esc(lv.place)}</b><p>${esc(lv.story)}</p><div class="chips">${lv.rooms.map((r, i) => `<span class="chip2">${i + 1}. ${esc(r.name)}</span>`).join('')}</div></div>`
+        : '<p class="muted" style="margin:0">엘리베이터 버튼을 눌러 탐사할 층을 고르세요.</p>'}
+      <p class="muted" style="font-size:15px;margin:0">상자 15개 · 힌트 ${UNIT.hintTokens}번 · 처음에 맞힌 문제 수가 점수가 돼요.</p>
+      <div class="form">
+        <label>반<input id="f-cls" inputmode="numeric" autocomplete="off" placeholder="예: 3"></label>
+        <label>번호<input id="f-num" inputmode="numeric" autocomplete="off" placeholder="예: 12"></label>
+        <label>이름<input id="f-name" autocomplete="off" placeholder="이름"></label>
+      </div>
+      <div class="err" id="f-err"></div>
+      <div><button class="btn primary" data-act="begin">${lv ? esc(lv.floor) + '(으)로 출발' : '층을 먼저 고르세요'}</button></div>
+    </div>`}
+    <div class="footer-links"><button class="btn ghost" data-act="teacher">선생님 결과 보기</button><button class="btn ghost" data-act="qr">QR 크게 보기</button>
+      ${Backend.mode === 'demo' ? '<span class="muted" style="font-size:14px;align-self:center">연습 모드: 결과가 이 기기에만 저장돼요.</span>' : ''}</div>
+  </section>`;
+}
+
+function renderRail() {
+  const here = view === 'result' ? -1 : (S.viewRoom != null ? S.viewRoom : roomOf(S.current));
+  return `<div class="rail">
+    <div class="rooms"><span class="floorbadge num" title="${esc(L.floor)}">${esc(L.code)}</span>${L.rooms.map((r, i) => {
+      const done = roomPuzzles(i).every(x => S.results[x.p.id] && S.results[x.p.id].s);
+      return `<span class="rpill ${done ? 'done' : ''} ${i === here ? 'here' : ''}">${i + 1}. ${esc(r.short)}</span>`;
+    }).join('')}</div>
+    <div class="stats">
+      <span class="cards" title="모은 숫자 카드">${allCards().map((c, i) => `<span class="ncard ${S.cards[i] ? '' : 'empty'}">${esc(S.cards[i] || '·')}</span>`).join('')}</span>
+      <span class="chip" title="남은 힌트">힌트 <b class="num">${S.hintTokens}</b></span>
+      <span class="chip num" id="timer">${fmtTime(elapsed())}</span>
+      <button class="mute" data-act="mute">${SFX.muted ? '소리 꺼짐' : '소리 켜짐'}</button>
+    </div>
+    <div class="sync" data-sync style="width:100%;text-align:right"></div>
+  </div>`;
+}
+
+function renderRoom() {
+  const r = S.viewRoom, room = L.rooms[r];
+  return `<section class="room">
+    <div class="room-head"><div class="eyebrow">관찰실 ${r + 1} / ${L.rooms.length} · ${esc(room.topic)}</div><h2>${esc(room.name)}</h2></div>
+    <div class="log"><p>${esc(room.log)}</p></div>
+    <div class="stage"><canvas id="scene" width="${COLS * T}" height="${ROWS * T}" aria-label="${esc(room.name)} 지도. 방향키로 움직이고 상자에 부딪히면 문제가 열려요."></canvas></div>
+    <div class="status" id="status">방향키로 움직여 보세요. 반짝이는 상자에 부딪히면 자물쇠 문제가 열려요.</div>
+    <div class="ctrl">
+      <div class="pad" aria-label="이동 버튼"><button class="u" data-dir="up" aria-label="위">▲</button><button class="l" data-dir="left" aria-label="왼쪽">◀</button><button class="d" data-dir="down" aria-label="아래">▼</button><button class="r" data-dir="right" aria-label="오른쪽">▶</button></div>
+      <button class="actbtn" data-act="interact">조사</button>
+      <p class="keys">키보드: <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> 또는 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동 · <kbd>Space</kbd> 조사<br>화면을 누르면 그곳까지 걸어가요.</p>
+    </div>
+  </section>`;
+}
+
+function renderPuzzle() {
+  const p = P[S.current], r = res(p.id);
+  const part = p.parts[S.part];
+  const solved = r.s && S.solvedView;
+  let body = '';
+  if (solved) {
+    body = `<div class="solved"><h3>${p.final ? '출구 문이 열렸어요!' : '상자가 열렸어요!'}</h3>
+      <p>${esc(p.explanation)}</p>
+      ${p.card ? `<p><b>숫자 카드 ${esc(p.card)}</b>를 얻었어요. 출구 문에서 써요.</p>` : ''}
+      <div><button class="btn primary" data-act="next">${p.final ? '기지 밖으로 나가기' : '다음으로'}</button></div></div>`;
+  } else {
+    body = `<div class="panel ${fb && fb.tone === 'bad' ? 'shake' : fb && fb.tone === 'good' ? 'pass' : ''}">
+      ${p.parts.length > 1 ? `<div class="steplabel">${S.part + 1}단계 / ${p.parts.length} · ${esc(part.stepTitle || '')}</div>` : ''}
+      ${renderPart(part, work)}
+      ${fb ? `<div class="fb ${fb.tone}">${esc(fb.text)}</div>` : ''}
+      <div class="actions">
+        <button class="btn ghost" data-act="hint" ${r.h >= p.hints.length || S.hintTokens <= 0 ? 'disabled' : ''}>힌트 보기 (${S.hintTokens}개 남음)</button>
+        <button class="btn amber" data-act="submit">자물쇠 열기</button>
+      </div>
+    </div>
+    ${r.h ? `<div class="hints">${p.hints.slice(0, r.h).map((t, i) => `<div class="hint"><b>힌트 ${i + 1}</b> ${esc(t)}</div>`).join('')}</div>` : ''}`;
+  }
+  return `<section class="puzzle">
+    <div><button class="btn ghost" data-act="back">← ${esc(L.rooms[p.room].name)}으로</button></div>
+    <div class="pz-head"><div class="eyebrow">${p.final ? '출구 문' : '상자'} · ${esc(p.lesson)} · 문항 ${S.current + 1}/${P.length}</div>
+      <h2>${CONFIG.SHOW_DIFFICULTY && p.diff ? `<span class="diff d-${DIFF_CLASS[p.diff]}">${esc(p.diff)}</span>` : ''}${esc(p.title)}</h2><p style="margin:0">${esc(p.story)}</p><p class="instr" style="margin:0">${esc(p.instructions)}</p></div>
+    ${p.figure && !solved ? renderFigure(p.figure) : ''}
+    ${body}
+  </section>`;
+}
+
+function renderFigure(f) {
+  if (f.kind === 'tape') {
+    const W2 = 170, OV = 32, xs = [8, 8 + W2 - OV, 8 + 2 * (W2 - OV)];
+    return `<figure class="fig"><svg viewBox="0 0 470 138" role="img" aria-label="길이 ${esc(f.len)}인 색 테이프를 ${esc(f.overlap)}씩 겹쳐 이어 붙인 그림">
+      ${xs.map((x, i) => `<rect x="${x}" y="46" width="${i === 2 ? 150 : W2}" height="38" fill="${i % 2 ? '#f8d2a9' : '#fbe1c4'}" stroke="#a5713f" stroke-width="2.5"/>`).join('')}
+      ${xs.slice(1).map(x => `<rect x="${x}" y="46" width="${OV}" height="38" fill="#e09a5c" opacity=".8"/><line x1="${x + OV / 2}" y1="88" x2="${x + OV / 2}" y2="106" stroke="#a5713f" stroke-width="2" stroke-dasharray="4 3"/><text x="${x + OV / 2}" y="130" text-anchor="middle" font-size="21" font-weight="700" fill="#7a4d22">${esc(f.overlap)}</text>`).join('')}
+      ${xs.slice(0, 2).map((x, i) => `<path d="M${x} ${40 - i * 0} q${W2 / 2} -18 ${W2} 0" fill="none" stroke="#7a8590" stroke-width="2" stroke-dasharray="5 4"/><text x="${x + W2 / 2}" y="${i ? 22 : 22}" text-anchor="middle" font-size="21" font-weight="700" fill="#3d4750" dx="${i ? 12 : -12}">${esc(f.len)}</text>`).join('')}
+      <text x="440" y="74" font-size="28" fill="#7a8590">…</text></svg></figure>`;
+  }
+  if (f.kind === 'divtable') {
+    return `<figure class="fig"><div class="divt"><span></span><span class="arr">÷ →</span><span class="arr v">÷<br>↓</span>
+      <table>${f.cells.map(row => `<tr>${row.map(c => `<td class="${!c ? 'none' : /^[㉠-㉣]$/.test(c) ? 'blank' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div></figure>`;
+  }
+  if (f.kind === 'work') return `<figure class="fig"><figcaption>${esc(f.title)}</figcaption><pre>${f.lines.map(esc).join('\n')}</pre></figure>`;
+  return '';
+}
+
+function renderPart(part, w) {
+  switch (part.type) {
+    case 'multi': return `<div class="q"><div class="qt">${esc(part.q)}</div>
+      <div class="opts">${part.options.map((o, oi) => { const on = w.sel.includes(oi); return `<button class="opt check ${on ? 'on' : ''}" data-act="multi" data-o="${oi}" aria-pressed="${on}"><span class="cbox">${on ? '✓' : ''}</span>${CIRC[oi]} ${esc(o)}</button>`; }).join('')}</div>
+      <p class="muted" style="margin:0;font-size:14px">답이 여러 개일 수 있어요. 해당하는 것을 모두 누르세요.</p></div>`;
+    case 'write': return `<div class="q"><label class="qt" for="w-text">${esc(part.prompt)}</label>
+      <textarea id="w-text" class="wtext" rows="3" placeholder="${esc(part.placeholder || '')}">${esc(w.text || '')}</textarea>
+      <p class="muted" style="margin:0;font-size:13px">쓴 내용은 선생님께 그대로 전달돼요.</p></div>` + renderPart({ type: 'lock', fields: part.fields }, w);
+    case 'choice': return part.questions.map((q, qi) => `<div class="q"><div class="qt">${part.questions.length > 1 ? `(${qi + 1}) ` : ''}${esc(q.q)}</div>
+      <div class="opts">${q.options.map((o, oi) => `<button class="opt ${w.sel[qi] === oi ? 'on' : ''}" data-act="choice" data-q="${qi}" data-o="${oi}">${CIRC[oi]} ${esc(o)}</button>`).join('')}</div></div>`).join('');
+    case 'ox': return `<div class="ox">${part.statements.map((s, si) => `<div class="oxrow"><span>${si + 1}. ${esc(s.text)}</span>
+      <span class="oxbtns"><button class="oxb ${w.sel[si] === true ? 'on' : ''}" data-act="ox" data-s="${si}" data-v="1" aria-label="O">O</button><button class="oxb ${w.sel[si] === false ? 'on' : ''}" data-act="ox" data-s="${si}" data-v="0" aria-label="X">X</button></span></div>`).join('')}</div>`;
+    case 'lock': return `<div class="lockbox ${part.fields.every(f => f.label.length <= 2) ? 'compact' : ''}">${part.fields.map((f, fi) => {
+      let di = 0;
+      const wheels = f.format.split('').map(c => {
+        if (c !== '#') return `<span class="pt">${esc(c)}</span>`;
+        const d = di++;
+        const rl = w.roll && w.roll.startsWith(fi + '-' + d + '-') ? (w.roll.endsWith('-1') && !w.roll.endsWith('--1') ? 'roll-up' : 'roll-down') : '';
+        return `<span class="wheel"><button data-act="wheel" data-f="${fi}" data-d="${d}" data-dir="1" aria-label="올리기">▲</button><span class="d ${rl}">${w.vals[fi][d]}</span><button data-act="wheel" data-f="${fi}" data-d="${d}" data-dir="-1" aria-label="내리기">▼</button></span>`;
+      }).join('');
+      return `<div class="lfield"><span class="lab">${esc(f.label)}</span><span class="lin"><span class="wheels">${wheels}</span>${f.unit ? `<span class="unit">${esc(f.unit)}</span>` : ''}</span></div>`;
+    }).join('')}</div>`;
+    case 'match': {
+      const used = Object.values(w.pairs);
+      const nOf = id => Object.keys(part.answer).indexOf(id) + 1;
+      return `<div class="two"><div class="col"><h4>식 · 기계</h4>${part.left.map(l => `<button class="tile ${w.pick === l.id ? 'pick' : ''} ${w.pairs[l.id] ? 'paired' : ''}" data-act="mL" data-id="${l.id}"><span class="badge">${nOf(l.id)}</span><span>${esc(l.label)}</span></button>`).join('')}</div>
+        <div class="col"><h4>짝</h4>${part.right.map(rt => { const owner = Object.keys(w.pairs).find(k => w.pairs[k] === rt.id);
+          return `<button class="tile ${owner ? 'paired' : ''}" data-act="mR" data-id="${rt.id}"><span class="badge">${owner ? nOf(owner) : ''}</span><span class="num">${esc(rt.label)}</span></button>`; }).join('')}</div></div>`;
+    }
+    case 'sort': {
+      const free = part.items.filter(it => !w.place[it.id]);
+      return `<div class="pool">${free.map(it => `<button class="tile ${w.pick === it.id ? 'pick' : ''}" data-act="sItem" data-id="${it.id}"><span class="num">${esc(it.label)}</span></button>`).join('') || '<span class="muted">모든 카드를 담았어요. 잘못 담은 카드는 눌러서 꺼낼 수 있어요.</span>'}</div>
+        <div class="two">${part.buckets.map(b => `<div class="bucket" data-act="sBucket" data-id="${b.id}" role="button" tabindex="0"><span class="bh">${esc(b.label)}</span>
+          ${part.items.filter(it => w.place[it.id] === b.id).map(it => `<button class="tile" data-act="sOut" data-id="${it.id}"><span class="num">${esc(it.label)}</span></button>`).join('')}</div>`).join('')}</div>`;
+    }
+    case 'order': return `<div class="col">${part.items.map(it => { const k = w.seq.indexOf(it.id);
+      return `<button class="tile ${k >= 0 ? 'paired' : ''}" data-act="oItem" data-id="${it.id}"><span class="badge">${k >= 0 ? k + 1 : ''}</span><span class="num">${esc(it.label)}</span></button>`; }).join('')}</div>`;
+    case 'build': {
+      const usedIdx = Object.values(w.slots);
+      return `<div class="expr">${part.template.map(k => /^[a-z]$/.test(k)
+          ? `<button class="slot ${w.slots[k] != null ? 'full' : ''}" data-act="bSlot" data-k="${k}" aria-label="빈칸">${w.slots[k] != null ? esc(S.cards[w.slots[k]]) : ''}</button>`
+          : `<span>${esc(k)}</span>`).join('')}</div>
+        <div class="muted" style="font-size:15px">모은 숫자 카드 (누르면 빈칸에 들어가요. 칸을 누르면 빠져요)</div>
+        <div class="row">${S.cards.map((c, i) => `<button class="bigcard ${usedIdx.includes(i) ? 'used' : ''}" data-act="bCard" data-i="${i}" ${usedIdx.includes(i) ? 'disabled' : ''}>${esc(c)}</button>`).join('')}</div>`;
+    }
+  }
+}
+
+function renderOverlay() {
+  if (overlay.kind === 'card') {
+    const nextRoom = L.rooms[roomOf(S.current)];
+    return `<div class="overlay"><div class="sheet"><div class="eyebrow">관찰실 통과</div><h2>숫자 카드를 얻었어요</h2>
+      <button class="bigcard" tabindex="-1">${esc(overlay.card)}</button>
+      <p style="margin:0">${overlay.door ? `위쪽 문이 열렸어요. 문까지 걸어가면 <b>${esc(nextRoom.name)}</b>(으)로 가요.` : '이제 출구 문만 남았어요! 위쪽 출구 문으로 걸어가세요.'}</p>
+      <button class="btn primary" data-act="closeOverlay">계속 탐사하기</button></div></div>`;
+  }
+  if (overlay.kind === 'qr') {
+    return `<div class="overlay"><div class="sheet"><div class="eyebrow">휴대폰·태블릿 카메라로 찍으면 바로 접속해요</div><h2>${esc(UNIT.title.join(' '))}</h2>
+      <div id="qrbox" class="qrbox" aria-label="게임 접속 QR 코드"></div>
+      <p class="num" style="word-break:break-all;margin:0;font-size:13px">${esc(appUrl || '주소를 불러오는 중…')}</p>
+      <button class="btn primary" data-act="closeOverlay">닫기</button></div></div>`;
+  }
+  if (overlay.kind === 'note') {
+    const room = L.rooms[S.viewRoom];
+    return `<div class="overlay"><div class="sheet" style="text-align:left;justify-items:start"><div class="eyebrow">책상 위 관찰 노트</div><h2 style="font-size:24px">${esc(room.note.title.replace(/^관찰 노트 · /, ''))}</h2>
+      <p style="margin:0">${esc(room.note.text)}</p><button class="btn primary" data-act="closeOverlay">노트 덮기</button></div></div>`;
+  }
+  if (overlay.kind === 'final') {
+    return `<div class="overlay"><div class="sheet"><div class="eyebrow">탈출 성공</div><h2>연구 기지를 탈출했어요!</h2>
+      <p style="margin:0">걸린 시간 <b class="num">${fmtTime(elapsed())}</b><br>다섯 관찰실의 동물들 모두 안전해요.</p>
+      <button class="btn primary" data-act="toResult">내 결과 보기</button></div></div>`;
+  }
+  return '';
+}
+
+function renderResult() {
+  const rec = record();
+  return `<section class="result">
+    <div><div class="eyebrow">${esc(UNIT.unitName)} · ${esc(L.floor)} ${esc(L.place)} · 단원평가 결과</div><h2 style="font-size:40px">${esc(S.student.name)}의 탐사 기록</h2></div>
+    <div class="scoreline">
+      <div class="stat"><span>처음에 맞힌 문제</span><b>${rec.score}<small style="font-size:16px"> / ${P.length}</small></b></div>
+      <div class="stat"><span>걸린 시간</span><b style="font-size:22px">${fmtTime(elapsed())}</b></div>
+      <div class="stat"><span>사용한 힌트</span><b>${rec.hints}</b></div>
+    </div>
+    <div class="qgrid">${P.map((p, i) => { const r = S.results[p.id] || {};
+      const k = r.f ? 'first' : r.s ? 'later' : '';
+      return `<div class="qcell ${k}"><span class="muted num" style="font-size:12px">${i + 1}번 · ${esc(L.rooms[p.room].short)}</span><span>${esc(p.title)}</span>
+        <span class="mk" style="color:${r.f ? 'var(--leaf)' : 'var(--amber)'}">${r.f ? '○ 한 번에' : r.s ? '△ ' + r.a + '번 만에' : '-'}${r.h ? ' · 힌트 ' + r.h : ''}</span></div>`; }).join('')}</div>
+    <p class="muted" data-sync></p>
+    <div class="row"><button class="btn ghost" data-act="home">처음 화면</button></div>
+  </section>`;
+}
+
+/* ---------- 교사 화면 ---------- */
+function renderTeacher() {
+  let body = '';
+  if (!teacherData) {
+    body = `<div class="dossier"><p>${Backend.mode === 'demo' ? '연습 모드예요. 이 기기에서 플레이한 기록만 보여요. 비밀번호 칸은 비워 두어도 돼요.' : 'Apps Script에 정한 선생님 비밀번호를 입력하세요.'}</p>
+      <label class="form" style="grid-template-columns:1fr"><span class="muted" style="font-size:14px">선생님 비밀번호</span><input id="t-key" type="password" autocomplete="off" value="${esc(teacherKey)}"></label>
+      <div class="err">${esc(teacherErr)}</div><div><button class="btn primary" data-act="tLoad">결과 불러오기</button></div></div>`;
+  } else {
+    setLevel(teacherLevel);
+    const lvOf = r => r.level || 'basic';
+    const firstRuns = {};
+    teacherData.filter(r => lvOf(r) === teacherLevel).forEach(r => { const k = r.cls + '|' + r.num + '|' + r.name; (firstRuns[k] = firstRuns[k] || []).push(r); });
+    let rows = Object.values(firstRuns).map(list => { list.sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt))); return Object.assign({}, list[0], { tries: list.length }); });
+    const classes = [...new Set(rows.map(r => String(r.cls)))].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+    if (teacherCls) rows = rows.filter(r => String(r.cls) === teacherCls);
+    rows.sort((a, b) => (Number(a.cls) - Number(b.cls)) || (Number(a.num) - Number(b.num)));
+    const det = r => typeof r.detail === 'string' ? JSON.parse(r.detail || '{}') : (r.detail || {});
+    const rate = P.map(p => { const att = rows.filter(r => det(r)[p.id] && det(r)[p.id].s); const ok = rows.filter(r => det(r)[p.id] && det(r)[p.id].f);
+      return att.length ? Math.round(ok.length / att.length * 100) + '%' : '-'; });
+    const counts = l => new Set(teacherData.filter(r => lvOf(r) === l.id).map(r => r.cls + '|' + r.num + '|' + r.name)).size;
+    body = `<div class="levels" style="max-width:none" role="tablist">${UNIT.levels.map(l => `<button class="lvl ${l.id === teacherLevel ? 'on' : ''} lvl-${l.id}" data-act="tLevel" data-id="${l.id}" role="tab" aria-selected="${l.id === teacherLevel}"><span class="lvl-tag">${esc(l.code)}</span><b style="font-size:20px">${esc(l.floor)}</b><span>${esc(l.label)} 수준 · 학생 ${counts(l)}명</span></button>`).join('')}</div>
+      <div class="row"><button class="btn primary" data-act="tLoad">새로고침</button>
+        <label class="row" style="gap:6px">반 <select id="t-cls" style="font:inherit;padding:6px 10px;border-radius:8px">${['', ...classes].map(c => `<option value="${esc(c)}" ${c === teacherCls ? 'selected' : ''}>${c ? esc(c) + '반' : '전체'}</option>`).join('')}</select></label>
+        <button class="btn ghost" data-act="tCopy">표 복사 (스프레드시트에 붙여넣기)</button>
+        <span class="muted" style="font-size:14px">학생 ${rows.length}명 · 완료 ${rows.filter(r => r.done === true || r.done === 'TRUE' || r.done === 'true').length}명</span></div>
+      <p class="legend">○ 한 번에 맞힘 · △ 다시 풀어서 맞힘 · 숫자는 사용한 힌트 · 점수는 한 번에 맞힌 문항 수 · 학생이 처음부터 다시 하면 첫 번째 기록만 보여요</p>
+      <div class="tablewrap"><table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>점수</th><th>진행</th><th>힌트</th><th>시간</th>${P.map((p, i) => `<th title="${esc(p.title)}">${i + 1}<br><span class="dtag d-${DIFF_CLASS[p.diff] || 'mid'}">${esc(p.diff || '')}</span></th>`).join('')}<th>재시작</th></tr></thead><tbody>
+      ${rows.map(r => { const d = det(r); return `<tr><td>${esc(r.cls)}</td><td>${esc(r.num)}</td><td class="name">${esc(r.name)}</td><td class="num"><b>${esc(r.score)}</b></td><td class="num">${esc(r.progress)}/${P.length}</td><td class="num">${esc(r.hints)}</td><td class="num">${fmtTime((Number(r.seconds) || 0) * 1000)}</td>
+        ${P.map(p => { const x = d[p.id]; if (!x || !x.s) return '<td class="x">·</td>'; return `<td class="${x.f ? 'o' : 't'}">${x.f ? '○' : '△'}${x.h ? '<sup>' + x.h + '</sup>' : ''}</td>`; }).join('')}<td class="num">${r.tries > 1 ? r.tries - 1 + '회' : ''}</td></tr>`; }).join('')}
+      <tr class="rate"><td colspan="7">문항별 첫 시도 정답률</td>${rate.map(x => `<td class="num">${x}</td>`).join('')}<td></td></tr>
+      </tbody></table></div>
+      <div class="row">${['하', '중', '상'].map(dv => { const ps = P.filter(p => p.diff === dv); if (!ps.length) return '';
+        let att = 0, ok = 0; rows.forEach(r => { const d = det(r); ps.forEach(p => { if (d[p.id] && d[p.id].s) { att++; if (d[p.id].f) ok++; } }); });
+        return `<span class="dchip"><span class="dtag d-${DIFF_CLASS[dv]}">${dv}</span> ${ps.length}문항 · 첫 시도 정답률 <b class="num">${att ? Math.round(ok / att * 100) + '%' : '-'}</b></span>`; }).join('')}</div>
+      ${P.filter(p => p.parts.some(x => x.type === 'write')).map(p => { const list = rows.filter(r => det(r)[p.id] && det(r)[p.id].text);
+        return `<div class="wlist"><h3>서술형 · ${P.indexOf(p) + 1}. ${esc(p.title)}</h3>${list.length ? `<ul>${list.map(r => { const x = det(r)[p.id]; return `<li><span class="who">${esc(r.num)}번 ${esc(r.name)}</span> <span class="${x.f ? 'o' : x.s ? 't' : 'muted'}">${x.f ? '○' : x.s ? '△' : '풀이 중'}</span> ${esc(x.text)}</li>`; }).join('')}</ul>` : '<p class="muted">아직 쓴 학생이 없어요.</p>'}</div>`; }).join('')}`;
+  }
+  return `<section class="teacher"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">${esc(UNIT.unitName)}</div><h2 style="font-size:34px">선생님 결과판</h2></div><div class="row"><button class="btn ghost" data-act="qr">QR 크게 보기</button><button class="btn ghost" data-act="home">처음 화면</button></div></div>${body}</section>`;
+}
+
+/* ===================================================================
+   동작
+=================================================================== */
+function startTimer() { clearInterval(window.__t); window.__t = setInterval(() => { const t = document.getElementById('timer'); if (t && S) t.textContent = fmtTime(elapsed()); }, 1000); }
+function pause() { if (S && S.runningSince) { S.elapsedMs += Date.now() - S.runningSince; S.runningSince = null; persist(); } }
+function resume() { if (S && !S.runningSince && !S.finishedAt) { S.runningSince = Date.now(); } }
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); else { resume(); } });
+
+function openPuzzle() { savePos(); G.player = null; G.keys = []; G.path = []; work = initWork(curPart()); fb = null; view = 'puzzle'; render(); window.scrollTo(0, 0); }
+
+function submit() {
+  const p = P[S.current], r = res(p.id), part = curPart();
+  if (part.type === 'write') { r.text = (work.text || '').trim(); persist(); }
+  const c = check(part, work);
+  if (c.incomplete) { fb = { tone: 'info', text: c.needText ? '이유(과정)를 한 문장 이상 써 주세요.' : '아직 다 채우지 않았어요. 빈 곳을 채워 보세요.' }; render(); return; }
+  if (c.ok) {
+    if (S.part < p.parts.length - 1) { S.part++; work = initWork(curPart()); fb = { tone: 'good', text: (S.part) + '단계 통과! 다음 단계로 가요.' }; SFX.play('step'); persist(); render(); return; }
+    r.a++; r.s = true; if (r.f === null) r.f = (r.a === 1);
+    if (p.card && !S.cards.includes(p.card)) S.cards.push(p.card);
+    S.solvedView = true; fb = null; SFX.play('correct'); if (!p.final) FX.burstPid = p.id; celebrate('small'); persist(); sync(); render(); window.scrollTo(0, 0); return;
+  }
+  r.a++; if (r.f === null) r.f = false;
+  SFX.play('wrong');
+  persist();
+  fb = c.build ? { tone: 'bad', text: '문이 꿈쩍도 하지 않아요. 몫이 더 큰 식을 만들 수 있어요.' }
+    : part.type === 'multi' ? { tone: 'bad', text: '아직 열리지 않아요. 빠진 것이나 잘못 고른 것이 있어요.' }
+    : c.single ? { tone: 'bad', text: '아직 열리지 않아요. 다시 계산해 보세요.' }
+    : { tone: 'bad', text: `아직 열리지 않아요. ${c.total}개 중 ${c.correct}개가 맞았어요.` };
+  render();
+}
+
+function next() {
+  const p = P[S.current];
+  S.solvedView = false; S.part = 0;
+  if (p.final) { S.current = P.length; pause(); S.finishedAt = Date.now(); persist(); sync(); overlay = { kind: 'final' }; view = 'result'; render(); SFX.play('win'); celebrate('final'); return; }
+  const prevRoom = p.room; S.current++;
+  persist();
+  if (p.card) { overlay = { kind: 'card', card: p.card, door: roomOf(S.current) !== prevRoom }; showNote = false; view = 'room'; render(); SFX.play('card'); celebrate('card'); return; }
+  view = 'room'; render(); window.scrollTo(0, 0);
+}
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act; const part = (S && view === 'puzzle' && S.current < P.length) ? curPart() : null;
+  switch (act) {
+    case 'begin': {
+      const cls = document.getElementById('f-cls').value.trim(), num = document.getElementById('f-num').value.trim(), name = document.getElementById('f-name').value.trim();
+      if (!cls || !num || !name) { document.getElementById('f-err').textContent = '반, 번호, 이름을 모두 써 주세요.'; return; }
+      if (!pickLevel) { document.getElementById('f-err').textContent = '엘리베이터에서 탐사할 층을 먼저 골라 주세요.'; return; }
+      setLevel(pickLevel); elevatorDoors(L.code, L.place); S = newRun({ cls, num, name }, pickLevel); S.viewRoom = 0; G.player = null; persist(); view = 'room'; showNote = false; startTimer(); sync(); render(); break;
+    }
+    case 'resume': S = lsGet(LS_RUN, null); if (S) setLevel(S.level || 'basic'); if (!S || S.current >= P.length) { S = null; render(); break; } if (S.viewRoom == null) S.viewRoom = roomOf(S.current); G.player = null; FX.roomKey = ''; elevatorDoors(L.code, L.place); resume(); view = S.solvedView || S.part ? 'puzzle' : 'room'; work = initWork(curPart()); startTimer(); render(); break;
+    case 'forget': lsDel(LS_RUN); render(); break;
+    case 'mute': SFX.toggle(); el.textContent = SFX.muted ? '소리 꺼짐' : '소리 켜짐'; break;
+    case 'level': pickLevel = el.dataset.id; { const keep = ['f-cls', 'f-num', 'f-name'].map(id => { const i = document.getElementById(id); return i ? i.value : ''; }); render(); ['f-cls', 'f-num', 'f-name'].forEach((id, k) => { const i = document.getElementById(id); if (i) i.value = keep[k]; }); } break;
+    case 'tLevel': teacherLevel = el.dataset.id; render(); break;
+    case 'interact': interactFacing(); break;
+    case 'openPuzzle': openPuzzle(); break;
+    case 'back': view = 'room'; fb = null; render(); window.scrollTo(0, 0); break;
+    case 'hint': { const p = P[S.current], r = res(p.id); if (r.h < p.hints.length && S.hintTokens > 0) { r.h++; S.hintTokens--; SFX.play('hint'); persist(); render(); } break; }
+    case 'submit': submit(); break;
+    case 'next': next(); break;
+    case 'closeOverlay': overlay = null; render(); window.scrollTo(0, 0); break;
+    case 'toResult': overlay = null; view = 'result'; render(); window.scrollTo(0, 0); break;
+    case 'home': view = 'start'; teacherData = null; render(); break;
+    case 'choice': work.sel[el.dataset.q] = +el.dataset.o; fb = null; render(); break;
+    case 'multi': { const o = +el.dataset.o, k = work.sel.indexOf(o); if (k >= 0) work.sel.splice(k, 1); else work.sel.push(o); SFX.play('click'); fb = null; render(); break; }
+    case 'qr': overlay = { kind: 'qr' }; render(); break;
+    case 'ox': work.sel[el.dataset.s] = el.dataset.v === '1'; fb = null; render(); break;
+    case 'wheel': { const v = work.vals[el.dataset.f]; const d = +el.dataset.d; v[d] = (v[d] + (+el.dataset.dir) + 10) % 10; work.roll = el.dataset.f + '-' + d + '-' + el.dataset.dir; SFX.play('click'); fb = null; render(); break; }
+    case 'mL': { const id = el.dataset.id; if (work.pairs[id]) { delete work.pairs[id]; work.pick = null; } else work.pick = id; fb = null; render(); break; }
+    case 'mR': { const id = el.dataset.id; const owner = Object.keys(work.pairs).find(k => work.pairs[k] === id);
+      if (work.pick) { if (owner) delete work.pairs[owner]; work.pairs[work.pick] = id; work.pick = null; } else if (owner) delete work.pairs[owner];
+      fb = null; render(); break; }
+    case 'sItem': work.pick = work.pick === el.dataset.id ? null : el.dataset.id; render(); break;
+    case 'sBucket': if (work.pick) { work.place[work.pick] = el.dataset.id; work.pick = null; fb = null; render(); } break;
+    case 'sOut': e.stopPropagation(); delete work.place[el.dataset.id]; fb = null; render(); break;
+    case 'oItem': { const id = el.dataset.id; const k = work.seq.indexOf(id); if (k >= 0) work.seq = work.seq.slice(0, k); else work.seq.push(id); fb = null; render(); break; }
+    case 'bCard': { const i = +el.dataset.i; const k = part.template.find(t => /^[a-z]$/.test(t) && work.slots[t] == null); if (k) { work.slots[k] = i; fb = null; render(); } break; }
+    case 'bSlot': delete work.slots[el.dataset.k]; fb = null; render(); break;
+    case 'teacher': view = 'teacher'; teacherErr = ''; render(); break;
+    case 'tLoad': {
+      const inp = document.getElementById('t-key'); if (inp) teacherKey = inp.value;
+      teacherErr = '불러오는 중…'; render();
+      Backend.load(teacherKey).then(rows => { teacherData = rows || []; teacherErr = ''; render(); })
+        .catch(err => { teacherData = null; teacherErr = '불러오지 못했어요: ' + (err && err.message ? err.message : err); render(); });
+      break;
+    }
+    case 'tCopy': copyTable(); break;
+  }
+});
+app.addEventListener('input', e => { if (e.target.id === 'w-text' && work) work.text = e.target.value; });
+app.addEventListener('change', e => { if (e.target.id === 't-cls') { teacherCls = e.target.value; render(); } });
+app.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.closest && e.target.closest('.form') && view === 'start') { const b = app.querySelector('[data-act="begin"]'); if (b) b.click(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('bucket')) { e.preventDefault(); e.target.click(); }
+});
+
+function copyTable() {
+  const t = app.querySelector('table'); if (!t) return;
+  const text = [...t.rows].map(tr => [...tr.cells].map(td => td.textContent.trim()).join('\t')).join('\n');
+  const done = () => { teacherErr = ''; const b = app.querySelector('[data-act="tCopy"]'); if (b) b.textContent = '복사했어요'; };
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done)); else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+
+/* ===================================================================
+   걸어 다니는 방 (캔버스 지도)
+   지도 글자: # 벽  W 창문  D 다음 방 문  A·B·C 상자(방의 1·2·3번 문제)  N 관찰 노트
+             S 시작 위치  . 바닥  , 깔개  c 방석(밟을 수 있음)
+             p 화분  r 사육 상자  s 책장  t 탁자  k 망원경  w 물  l 연잎(물)  b 작업대
+             i 얼음  g 펭귄  f 꽃덤불  u 나무  q 리본 실패
+   마지막 방의 C는 위쪽 벽에 있는 출구 문(마지막 문제)입니다.
+=================================================================== */
+const T = 32, COLS = 16, ROWS = 11, W = COLS * T, H = ROWS * T;
+const THEMES = [
+  /* 지하 1층 */
+  { f1: '#d4e6c3', f2: '#c9ddb7', rug: '#e9c46a', wall: '#55684a', top: '#7a9068', floor: 'tile', amb: 'pollen' },
+  { f1: '#dde2ec', f2: '#d1d8e5', rug: '#9fb4d6', wall: '#434d68', top: '#66728f', floor: 'metal', amb: 'dust' },
+  { f1: '#d2e8ee', f2: '#c5dfe7', rug: '#8cc6d6', wall: '#2c596a', top: '#467d90', water: '#2f8fbf', fish: true, floor: 'tile', amb: 'bubble' },
+  { f1: '#ecdcbf', f2: '#e2cfae', rug: '#d98f5c', wall: '#77573a', top: '#98734e', floor: 'wood', amb: 'dust' },
+  { f1: '#eef6fa', f2: '#e1eef5', rug: '#bfe3f2', wall: '#46667c', top: '#6b8ca3', water: '#4aa3d6', floor: 'ice', amb: 'snow' },
+  /* 지하 2층 */
+  { f1: '#c9d6b8', f2: '#bccaa9', rug: '#b98b4e', wall: '#3e4a36', top: '#59684d', floor: 'tile', amb: 'firefly' },
+  { f1: '#cdd3e6', f2: '#c0c8de', rug: '#7d95c4', wall: '#2f3650', top: '#4b5575', floor: 'metal', amb: 'dust' },
+  { f1: '#b9d3de', f2: '#acc8d5', rug: '#5fa3bd', wall: '#1d3f4f', top: '#2f5f73', water: '#1f6d94', fish: true, floor: 'metal', amb: 'bubble' },
+  { f1: '#e3d3b6', f2: '#d8c6a5', rug: '#b5654a', wall: '#5b4029', top: '#7a5a3c', floor: 'wood', amb: 'spark' },
+  { f1: '#e3eef4', f2: '#d6e5ee', rug: '#a9d4ea', wall: '#33505f', top: '#4f7183', water: '#3d8fc0', floor: 'ice', amb: 'snow' },
+  /* 1층 */
+  { f1: '#c8e8a4', f2: '#bce096', rug: '#f6d365', wall: '#5f8a3a', top: '#86b356', floor: 'grass', amb: 'butterfly' },
+  { f1: '#fbe3ec', f2: '#f6d6e2', rug: '#f7a1c4', wall: '#9a5b7a', top: '#c27ba0', floor: 'wood', amb: 'twinkle' },
+  { f1: '#cdeccc', f2: '#c1e4c0', rug: '#9ad1b5', wall: '#3f7d6a', top: '#5fa38c', water: '#3aa6b9', turtle: true, floor: 'grass', amb: 'butterfly' },
+  { f1: '#f6e3c3', f2: '#efd6ae', rug: '#e9a15b', wall: '#8c6239', top: '#b38250', floor: 'wood', amb: 'dust' },
+  { f1: '#f2f9fc', f2: '#e6f3f9', rug: '#ffd6e0', wall: '#5b88a6', top: '#80aeca', water: '#56b4e0', floor: 'ice', amb: 'snow' }
+];
+const SOLID = new Set(['#', 'W', 'D', 'C', 'A', 'B', 'N', 'p', 'r', 's', 't', 'k', 'w', 'l', 'b', 'i', 'g', 'f', 'u', 'q']);
+const INTERACT = new Set(['A', 'B', 'C', 'D', 'N']);
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const G = { player: null, keys: [], path: [], bumpKey: '', anim: 0, last: 0, toastUntil: 0 };
+const FX = { parts: [], floats: [], floorKey: '', roomKey: '', enterAt: -1e9, burstPid: null, water: [], benches: [], layers: null };
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- 효과음 (WebAudio, 파일 없이) ---------- */
+const SFX = (() => {
+  let ac = null, muted = lsGet('escape:mute', false);
+  function ctx() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(f, t0, dur, type, vol, slide) {
+    const a = ctx(); if (!a || muted) return;
+    const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + dur);
+    g.gain.setValueAtTime(vol || 0.06, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
+  }
+  const lib = {
+    bump: () => tone(150, 0, 0.12, 'square', 0.05, 0.7),
+    open: () => { tone(520, 0, 0.08, 'triangle', 0.07); tone(780, 0.06, 0.12, 'triangle', 0.07); },
+    click: () => tone(1250, 0, 0.03, 'square', 0.025),
+    correct: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.08, 0.2, 'square', 0.05)),
+    step: () => tone(880, 0, 0.1, 'triangle', 0.05),
+    wrong: () => { tone(220, 0, 0.18, 'sawtooth', 0.045, 0.8); tone(170, 0.13, 0.25, 'sawtooth', 0.045, 0.8); },
+    card: () => [880, 1175, 1568, 2093].forEach((f, i) => tone(f, i * 0.07, 0.3, 'triangle', 0.06)),
+    door: () => { tone(260, 0, 0.45, 'triangle', 0.07, 2.4); tone(520, 0.2, 0.3, 'sine', 0.05); },
+    note: () => { tone(660, 0, 0.1, 'sine', 0.06); tone(990, 0.08, 0.14, 'sine', 0.05); },
+    hint: () => tone(988, 0, 0.18, 'sine', 0.05),
+    ding: () => { tone(1319, 0, 0.7, 'sine', 0.08); tone(1047, 0.28, 0.9, 'sine', 0.07); },
+    win: () => [523, 659, 784, 1047, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, i * 0.11, 0.32, 'square', 0.05))
+  };
+  return { play(k) { try { lib[k] && lib[k](); } catch (e) {} }, get muted() { return muted; }, toggle() { muted = !muted; lsSet('escape:mute', muted); if (!muted) lib.click(); } };
+})();
+
+/* ---------- 지도 / 이동 ---------- */
+function theme(r) { return THEMES[L.themes[r == null ? S.viewRoom : r]]; }
+function tileAt(r, x, y) { if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return '#'; return L.maps[r][y][x]; }
+function walkable(r, x, y) { return !SOLID.has(tileAt(r, x, y)); }
+function findChar(r, ch) { for (let y = 0; y < ROWS; y++) { const x = L.maps[r][y].indexOf(ch); if (x >= 0) return { x, y }; } return { x: 1, y: 1 }; }
+function roomCleared(r) { return roomPuzzles(r).every(x => S.results[x.p.id] && S.results[x.p.id].s); }
+function slotOf(ch) { return roomPuzzles(S.viewRoom)['ABC'.indexOf(ch)]; }
+function ensurePlayer() {
+  if (!(S.viewRoom >= 0 && S.viewRoom < L.rooms.length)) S.viewRoom = Math.min(roomOf(S.current), L.rooms.length - 1);
+  const r = S.viewRoom;
+  if (!S.pos || S.pos.r !== r) { const st = findChar(r, 'S'); S.pos = { r, x: st.x, y: st.y, dir: 'up' }; }
+  G.player = { x: S.pos.x, y: S.pos.y, fx: S.pos.x, fy: S.pos.y, tx: S.pos.x, ty: S.pos.y, dir: S.pos.dir, moving: false, prog: 0, step: 0 };
+  const key = L.id + ':' + r;
+  if (FX.roomKey !== key) { FX.roomKey = key; FX.enterAt = performance.now(); FX.parts = []; FX.floats = []; }
+}
+function savePos() { if (G.player && S) { S.pos = { r: S.viewRoom, x: G.player.x, y: G.player.y, dir: G.player.dir }; persist(); } }
+function setStatus(text, toast) {
+  const el = document.getElementById('status'); if (!el) return;
+  if (toast) G.toastUntil = performance.now() + 2600;
+  if (el.textContent !== text) el.textContent = text;
+  el.classList.toggle('toast', !!toast);
+}
+function describe(ch) {
+  if (ch === 'N') return '책상 위 관찰 노트예요. 부딪히거나 [조사]를 누르면 펼쳐져요.';
+  if (ch === 'D') return roomCleared(S.viewRoom) ? '열린 문이에요. 위로 걸어가면 다음 방으로 가요!' : '잠긴 문이에요. 이 방의 상자를 모두 열어야 해요.';
+  const it = slotOf(ch); if (!it) return '';
+  const r = S.results[it.p.id];
+  const name = it.p.final ? '출구 문' : '상자 ' + ('ABC'.indexOf(ch) + 1);
+  if (r && r.s) return `${name} 「${it.p.title}」 · 이미 열었어요.`;
+  if (it.i === S.current) return `${name} 「${it.p.title}」 · 부딪히거나 [조사]를 누르면 자물쇠 문제가 열려요.`;
+  return `${name} · 앞 상자를 먼저 열어야 해요.`;
+}
+function interact(ch) {
+  if (ch === 'N') { savePos(); G.keys = []; SFX.play('note'); overlay = { kind: 'note' }; render(); return; }
+  if (ch === 'D') {
+    if (!roomCleared(S.viewRoom)) { SFX.play('bump'); setStatus('문이 잠겨 있어요. 이 방의 상자 세 개를 모두 열어야 해요.', true); return; }
+    SFX.play('door'); S.viewRoom++; S.pos = null; G.player = null; G.keys = []; G.path = []; persist(); render(); window.scrollTo(0, 0); return;
+  }
+  const it = slotOf(ch); if (!it) return;
+  const r = S.results[it.p.id];
+  if (r && r.s) { setStatus(`이미 연 ${it.p.final ? '문' : '상자'}예요 · 「${it.p.title}」`, true); return; }
+  if (it.i === S.current) { SFX.play('open'); openPuzzle(); return; }
+  SFX.play('bump'); setStatus('이 상자는 아직 잠겨 있어요. 앞 상자를 먼저 열어 보세요.', true);
+}
+function facing() { const p = G.player; const [dx, dy] = DIRS[p.dir]; return { x: p.x + dx, y: p.y + dy, ch: tileAt(S.viewRoom, p.x + dx, p.y + dy) }; }
+function interactFacing() {
+  if (!G.player || G.player.moving) return;
+  const f = facing();
+  if (INTERACT.has(f.ch)) interact(f.ch); else setStatus('앞에 살펴볼 물건이 없어요. 상자나 책상, 문 앞에 서서 눌러 보세요.', true);
+}
+
+/* 화면을 누른 곳까지 걸어가기 (너비 우선 탐색) */
+function walkTo(tx, ty) {
+  const r = S.viewRoom, p = G.player; if (!p) return;
+  const sx = p.moving ? p.tx : p.x, sy = p.moving ? p.ty : p.y;
+  const target = tileAt(r, tx, ty), goalObj = INTERACT.has(target);
+  if (!goalObj && !walkable(r, tx, ty)) return;
+  const prev = {}, key = (x, y) => x + ',' + y, q = [[sx, sy]]; prev[key(sx, sy)] = null;
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const d in DIRS) { const nx = x + DIRS[d][0], ny = y + DIRS[d][1], k = key(nx, ny);
+      if (k in prev || !walkable(r, nx, ny)) continue; prev[k] = [x, y, d]; q.push([nx, ny]); }
+  }
+  let end = null, last = null;
+  if (goalObj) {
+    let best = Infinity;
+    for (const d in DIRS) { const nx = tx - DIRS[d][0], ny = ty - DIRS[d][1];
+      if (!(key(nx, ny) in prev)) continue;
+      let len = 0, c = [nx, ny]; while (prev[key(c[0], c[1])]) { c = prev[key(c[0], c[1])]; len++; }
+      if (len < best) { best = len; end = [nx, ny]; last = d; } }
+  } else if (key(tx, ty) in prev) end = [tx, ty];
+  if (!end) { setStatus('그곳으로는 갈 수 없어요.', true); return; }
+  const dirs = []; let c = end;
+  while (prev[key(c[0], c[1])]) { const pr = prev[key(c[0], c[1])]; dirs.unshift(pr[2]); c = [pr[0], pr[1]]; }
+  if (last) dirs.push(last);
+  G.path = dirs; G.bumpKey = '';
+  spawn({ type: 'ring', x: tx * T + 16, y: ty * T + 16, max: 0.45, color: '255,255,255', size: 18 });
+}
+
+function update(dt) {
+  const p = G.player; if (!p) return;
+  if (performance.now() - FX.enterAt < 600) return;   // 입장 연출 동안 잠시 멈춤
+  if (p.moving) {
+    p.prog += dt / 0.15;
+    if (p.prog >= 1) { p.x = p.tx; p.y = p.ty; p.moving = false; p.prog = 0; G.bumpKey = ''; S.pos = { r: S.viewRoom, x: p.x, y: p.y, dir: p.dir }; }
+  }
+  if (!p.moving) {
+    let dir = null, fromPath = false;
+    if (G.keys.length) { dir = G.keys[G.keys.length - 1]; G.path = []; }
+    else if (G.path.length) { dir = G.path.shift(); fromPath = true; }
+    if (dir) {
+      p.dir = dir;
+      const nx = p.x + DIRS[dir][0], ny = p.y + DIRS[dir][1], ch = tileAt(S.viewRoom, nx, ny);
+      if (walkable(S.viewRoom, nx, ny)) {
+        p.moving = true; p.tx = nx; p.ty = ny; p.prog = 0; p.step++;
+        for (let i = 0; i < 2; i++) spawn({ type: 'puff', x: p.x * T + 10 + i * 12, y: p.y * T + 30, max: 0.35, size: 3 + Math.random() * 2, color: theme().floor === 'ice' ? '255,255,255' : '120,110,95' });
+      }
+      else if (INTERACT.has(ch)) { const k = nx + ',' + ny; if (G.bumpKey !== k) { G.bumpKey = k; G.path = []; interact(ch); return; } }
+      else if (fromPath) G.path = [];
+    }
+  }
+  p.fx = p.moving ? p.x + (p.tx - p.x) * p.prog : p.x;
+  p.fy = p.moving ? p.y + (p.ty - p.y) * p.prog : p.y;
+  if (performance.now() > G.toastUntil) {
+    const f = facing();
+    setStatus(INTERACT.has(f.ch) ? describe(f.ch) : (roomCleared(S.viewRoom) && S.viewRoom < L.rooms.length - 1 ? '이 방의 상자를 모두 열었어요! 위쪽 문으로 걸어가세요.' : '방향키로 움직여 보세요. 반짝이는 상자에 부딪히면 자물쇠 문제가 열려요.'), false);
+  }
+}
+
+/* ---------- 파티클 ---------- */
+function spawn(o) { if (FX.parts.length < 420) FX.parts.push(Object.assign({ life: 0, max: 1, vx: 0, vy: 0, g: 0, size: 2, color: '255,255,255' }, o)); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function burstAt(x, y, big) {
+  const cols = ['#ffd166', '#ef476f', '#06d6a0', '#118ab2', '#f78c6b', '#ffffff', '#c77dff'];
+  for (let i = 0; i < (big ? 70 : 46); i++) spawn({ type: 'confetti', x, y, vx: rand(-150, 150), vy: rand(-260, -80), g: 520, max: rand(1.1, 1.8), rot: rand(0, 6), vr: rand(-12, 12), col: cols[i % cols.length], size: rand(3, 5) });
+  for (let i = 0; i < 14; i++) spawn({ type: 'star', x: x + rand(-30, 30), y: y + rand(-30, 20), max: rand(0.5, 0.9), color: '255,220,120', size: rand(4, 7) });
+  spawn({ type: 'ring', x, y, max: 0.6, color: '255,210,110', size: 60 });
+}
+function floatText(text, x, y, color) { FX.floats.push({ text, x, y, life: 0, max: 1.6, color }); }
+function ambient(dt) {
+  const th = theme(), a = th.amb, n = FX.parts.length;
+  const count = t => FX.parts.reduce((s, p) => s + (p.type === t), 0);
+  if (a === 'butterfly' && count('butterfly') < 5 && Math.random() < dt * 2) {
+    const cols = ['255,183,3', '255,111,145', '160,108,213', '72,202,228'];
+    spawn({ type: 'butterfly', x: rand(40, W - 40), y: rand(50, H - 60), max: rand(9, 14), ph: rand(0, 6), sp: rand(18, 30), color: cols[Math.floor(rand(0, 4))] });
+  }
+  if ((a === 'dust' || a === 'pollen') && Math.random() < dt * 4) spawn({ type: 'mote', x: rand(0, W), y: rand(30, H), vx: rand(-6, 6), vy: rand(-8, -2), max: rand(3, 6), size: rand(1.5, 3), color: a === 'pollen' ? '255,236,140' : '255,250,230' });
+  if (a === 'firefly' && count('firefly') < 12 && Math.random() < dt * 3) spawn({ type: 'firefly', x: rand(30, W - 30), y: rand(40, H - 40), vx: rand(-10, 10), vy: rand(-10, 10), max: rand(4, 8), ph: rand(0, 6), size: 2.5, color: '200,255,120' });
+  if (a === 'snow' && Math.random() < dt * 14) spawn({ type: 'snow', x: rand(-20, W), y: -6, vx: rand(4, 14), vy: rand(22, 40), max: 12, size: rand(1.5, 3.2), ph: rand(0, 6) });
+  if (a === 'twinkle' && Math.random() < dt * 4) spawn({ type: 'star', x: rand(20, W - 20), y: rand(40, H - 20), max: rand(0.6, 1.1), color: Math.random() < 0.5 ? '255,160,200' : '255,230,140', size: rand(3, 6) });
+  if (a === 'spark' && FX.benches.length && Math.random() < dt * 0.9) {
+    const b = FX.benches[Math.floor(rand(0, FX.benches.length))];
+    for (let i = 0; i < 9; i++) spawn({ type: 'spark', x: b.x * T + rand(8, 24), y: b.y * T + 10, vx: rand(-60, 60), vy: rand(-120, -40), g: 300, max: rand(0.4, 0.8), size: 2, color: '255,170,60' });
+  }
+  if ((th.water || a === 'bubble') && FX.water.length && Math.random() < dt * (a === 'bubble' ? 6 : 2)) {
+    const w = FX.water[Math.floor(rand(0, FX.water.length))];
+    spawn({ type: 'bubble', x: w.x * T + rand(6, 26), y: w.y * T + 28, vy: rand(-22, -12), max: rand(0.8, 1.4), size: rand(1.5, 3) });
+  }
+  // 지금 열 상자 · 열린 문 반짝임
+  const cur = currentTarget();
+  if (cur && Math.random() < dt * 7) spawn({ type: 'star', x: cur.x * T + rand(2, 30), y: cur.y * T + rand(0, 24), vy: -18, max: rand(0.6, 1), color: '255,215,120', size: rand(3, 6) });
+  const door = doorOpenPos();
+  if (door && Math.random() < dt * 8) spawn({ type: 'mote', x: door.x * T + rand(6, 26), y: door.y * T + rand(26, 40), vy: rand(10, 24), vx: rand(-6, 6), max: rand(0.8, 1.5), size: rand(2, 3), color: '170,255,190' });
+}
+function stepParticles(dt) {
+  const t = G.anim;
+  for (const p of FX.parts) {
+    p.life += dt;
+    if (p.type === 'butterfly') { p.x += Math.cos(t * 0.6 + p.ph) * p.sp * dt + Math.sin(t * 2.1 + p.ph) * 10 * dt; p.y += Math.sin(t * 0.9 + p.ph * 2) * p.sp * 0.7 * dt; }
+    else if (p.type === 'firefly') { p.vx += rand(-30, 30) * dt; p.vy += rand(-30, 30) * dt; p.vx *= 0.98; p.vy *= 0.98; p.x += p.vx * dt; p.y += p.vy * dt; }
+    else if (p.type === 'snow') { p.x += (p.vx + Math.sin(t * 2 + p.ph) * 10) * dt; p.y += p.vy * dt; if (p.y > H + 5) p.life = p.max; }
+    else { p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.vr) p.rot += p.vr * dt; }
+  }
+  FX.parts = FX.parts.filter(p => p.life < p.max);
+  for (const f of FX.floats) f.life += dt;
+  FX.floats = FX.floats.filter(f => f.life < f.max);
+}
+function drawParticles(ctx) {
+  const t = G.anim;
+  for (const p of FX.parts) {
+    const k = p.life / p.max, fade = Math.min(1, (1 - k) * 2.5) * Math.min(1, p.life * 8);
+    switch (p.type) {
+      case 'mote': ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(${p.color},${0.55 * fade})`; ctx.fillRect(p.x, p.y, p.size, p.size); break;
+      case 'firefly': { const b = (Math.sin(t * 4 + p.ph) + 1) / 2 * fade; ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(${p.color},${0.18 * b})`; ctx.fillRect(p.x - 5, p.y - 5, 12, 12); ctx.fillStyle = `rgba(${p.color},${0.9 * b})`; ctx.fillRect(p.x, p.y, 3, 3); break; }
+      case 'spark': ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(${p.color},${fade})`; ctx.fillRect(p.x, p.y, 2, 2); break;
+      case 'snow': ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(255,255,255,${0.9 * Math.min(1, p.life * 3)})`; ctx.fillRect(p.x, p.y, p.size, p.size); break;
+      case 'bubble': ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = `rgba(230,250,255,${0.85 * fade})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, 6.3); ctx.stroke(); break;
+      case 'puff': ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(${p.color},${0.35 * (1 - k)})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size + k * 5, 0, 6.3); ctx.fill(); break;
+      case 'ring': ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(${p.color},${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 4 + k * p.size, 0, 6.3); ctx.stroke(); break;
+      case 'star': { const s = p.size * Math.sin(Math.PI * k); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(${p.color},${0.95})`;
+        ctx.fillRect(p.x - s, p.y - 1, s * 2, 2); ctx.fillRect(p.x - 1, p.y - s, 2, s * 2); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(p.x - 1, p.y - 1, 2, 2); break; }
+      case 'confetti': ctx.globalCompositeOperation = 'source-over'; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = fade; ctx.fillStyle = p.col;
+        ctx.fillRect(-p.size / 2, -p.size, p.size, p.size * 2 * Math.abs(Math.cos(p.rot * 1.3))); ctx.restore(); break;
+      case 'butterfly': { const f = Math.abs(Math.sin(t * 16 + p.ph)) * 5 + 1; ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = Math.min(1, p.life, (p.max - p.life));
+        ctx.fillStyle = `rgb(${p.color})`; ctx.fillRect(p.x - f, p.y - 3, f, 4); ctx.fillRect(p.x + 2, p.y - 3, f, 4); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(p.x - f, p.y - 3, f, 1); ctx.fillRect(p.x + 2, p.y - 3, f, 1);
+        ctx.fillStyle = '#2b2b2b'; ctx.fillRect(p.x, p.y - 4, 2, 6); ctx.globalAlpha = 1; break; }
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+/* ---------- 그리기 (한 칸 = 16×16 점, 한 점 = 2px) ---------- */
+let CX = null;
+function R(tx, ty, x, y, w, h, c) { CX.fillStyle = c; CX.fillRect(tx * T + x * 2, ty * T + y * 2, w * 2, h * 2); }
+function hash(x, y) { return ((x * 73856093) ^ (y * 19349663)) >>> 0; }
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16), f = v => Math.max(0, Math.min(255, v + amt));
+  return '#' + [f(n >> 16), f((n >> 8) & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function isWallCh(ch) { return ch === '#' || ch === 'W' || ch === 'D'; }
+function drawFloor(r, x, y, ch) {
+  const th = theme(r), h = hash(x, y);
+  const base = (x + y) % 2 ? th.f1 : th.f2;
+  R(x, y, 0, 0, 16, 16, base);
+  switch (th.floor) {
+    case 'grass':
+      for (let i = 0; i < 5; i++) { const gx = (h >> (i * 3)) % 15, gy = (h >> (i * 2 + 1)) % 14; R(x, y, gx, gy, 1, 2, shade(base, -22)); }
+      if (h % 7 === 0) { R(x, y, 6, 6, 2, 2, ['#ff8fab', '#ffd166', '#ffffff', '#c77dff'][h % 4]); R(x, y, 7, 7, 1, 1, '#f9c74f'); }
+      break;
+    case 'wood':
+      R(x, y, 0, 0, 16, 16, shade(th.f1, (h % 3) * 4 - 4));
+      for (let i = 0; i < 4; i++) { R(x, y, 0, i * 4 + 3, 16, 1, shade(th.f1, -20)); R(x, y, ((h >> i) % 12) + 2, i * 4, 1, 3, shade(th.f1, -14)); }
+      break;
+    case 'metal':
+      R(x, y, 0, 0, 16, 1, shade(base, 16)); R(x, y, 0, 15, 16, 1, shade(base, -18)); R(x, y, 15, 0, 1, 16, shade(base, -18)); R(x, y, 0, 0, 1, 16, shade(base, 12));
+      R(x, y, 2, 2, 1, 1, shade(base, -35)); R(x, y, 13, 2, 1, 1, shade(base, -35)); R(x, y, 2, 13, 1, 1, shade(base, -35)); R(x, y, 13, 13, 1, 1, shade(base, -35));
+      break;
+    case 'ice':
+      if (h % 3 === 0) { for (let i = 0; i < 4; i++) R(x, y, 3 + i, 9 - i, 1, 1, '#ffffff'); }
+      if (h % 5 === 1) R(x, y, 10, 4, 3, 1, 'rgba(255,255,255,.8)');
+      break;
+    default:
+      R(x, y, 0, 0, 16, 1, shade(base, 10)); R(x, y, 0, 0, 1, 16, shade(base, 10));
+      if (h % 4 === 0) R(x, y, (h >> 3) % 13 + 1, (h >> 5) % 13 + 1, 2, 1, shade(base, -12));
+  }
+  if (ch === ',') {
+    R(x, y, 0, 0, 16, 16, th.rug); R(x, y, 1, 1, 14, 14, shade(th.rug, 16));
+    if ((x + y) % 2) { R(x, y, 6, 6, 4, 4, shade(th.rug, -18)); R(x, y, 7, 7, 2, 2, shade(th.rug, 30)); }
+  }
+  if (ch === 'c') { R(x, y, 2, 4, 12, 10, '#e07a5f'); R(x, y, 3, 5, 10, 8, '#f2a07b'); R(x, y, 7, 8, 2, 2, '#c25b42'); R(x, y, 3, 5, 10, 1, '#f9c4a8'); }
+}
+function buildFloor() {
+  const key = L.id + ':' + S.viewRoom; if (FX.floorKey === key) return; FX.floorKey = key;
+  const r = S.viewRoom; CX = FX.layers.floor.getContext('2d'); CX.clearRect(0, 0, W, H);
+  FX.water = []; FX.benches = [];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const ch = tileAt(r, x, y);
+    if (ch === 'w' || ch === 'l') FX.water.push({ x, y });
+    if (ch === 'b') FX.benches.push({ x, y });
+    if (!isWallCh(ch) && !(ch === 'C' && y === 0)) drawFloor(r, x, y, ch);
+  }
+  // 벽 아래 그늘
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const ch = tileAt(r, x, y); if (isWallCh(ch) || (ch === 'C' && y === 0)) continue;
+    if (isWallCh(tileAt(r, x, y - 1)) || (tileAt(r, x, y - 1) === 'C' && y === 1)) R(x, y, 0, 0, 16, 4, 'rgba(10,20,30,.16)');
+    if (isWallCh(tileAt(r, x - 1, y))) R(x, y, 0, 0, 3, 16, 'rgba(10,20,30,.10)');
+    if (isWallCh(tileAt(r, x + 1, y))) R(x, y, 13, 0, 3, 16, 'rgba(10,20,30,.10)');
+  }
+}
+function drawWater(r, x, y, ch) {
+  const th = theme(r), a = G.anim, h = hash(x, y), col = th.water || '#4aa3d6';
+  R(x, y, 0, 0, 16, 16, col);
+  const isW = (xx, yy) => { const c = tileAt(r, xx, yy); return c === 'w' || c === 'l'; };
+  if (!isW(x, y - 1)) { R(x, y, 0, 0, 16, 3, shade(col, -40)); R(x, y, 0, 3, 16, 1, shade(col, 50)); }
+  if (!isW(x, y + 1)) R(x, y, 0, 14, 16, 2, shade(col, 30));
+  if (!isW(x - 1, y)) R(x, y, 0, 0, 1, 16, shade(col, 40));
+  if (!isW(x + 1, y)) R(x, y, 15, 0, 1, 16, shade(col, 40));
+  const s1 = Math.floor((a * 5 + h % 16)) % 16, s2 = Math.floor((a * 3.3 + (h >> 4) % 16)) % 16;
+  R(x, y, s1 % 12, 6, 4, 1, 'rgba(255,255,255,.55)'); R(x, y, s2 % 13, 11, 3, 1, 'rgba(255,255,255,.4)');
+  if (Math.sin(a * 2 + h) > 0.85) R(x, y, (h >> 2) % 14, (h >> 6) % 12 + 2, 2, 2, 'rgba(255,255,255,.8)');
+  if (th.fish && h % 3 === 0) { const fx = Math.floor((a * 6 + h) % 22) - 5; if (fx > -1 && fx < 12) { R(x, y, fx, 8, 5, 3, '#f4a261'); R(x, y, fx + 5, 7, 2, 5, '#e76f51'); R(x, y, fx + 1, 8, 1, 1, '#222'); R(x, y, fx + 1, 10, 3, 1, '#ffd29c'); } }
+  if (th.fish && h % 7 === 1) { const sx = Math.floor((a * 9 + h) % 30) - 8; if (sx > -1 && sx < 10) { R(x, y, sx, 8, 8, 3, '#3d5a80'); R(x, y, sx + 2, 5, 3, 3, '#3d5a80'); R(x, y, sx - 2, 7, 2, 5, '#3d5a80'); R(x, y, sx + 7, 9, 3, 1, '#3d5a80'); R(x, y, sx + 6, 8, 1, 1, '#fff'); } }
+  if (th.turtle && h % 4 === 1) { const tx2 = Math.floor((a * 2.5 + h) % 26) - 6; if (tx2 > -1 && tx2 < 11) { R(x, y, tx2, 6, 6, 5, '#5a8f3d'); R(x, y, tx2 + 1, 7, 4, 3, '#7fb85a'); R(x, y, tx2 + 6, 7, 2, 3, '#9ccf6f'); R(x, y, tx2 - 1, 5, 2, 2, '#9ccf6f'); R(x, y, tx2 - 1, 10, 2, 2, '#9ccf6f'); R(x, y, tx2 + 7, 8, 1, 1, '#222'); } }
+  if (ch === 'l') { const b = Math.sin(a * 1.5 + h) * 0.5; R(x, y + b / 16, 3, 4, 10, 8, '#4caf50'); R(x, y + b / 16, 4, 5, 8, 6, '#66bb6a'); R(x, y + b / 16, 8, 4, 2, 4, col); R(x, y + b / 16, 5, 6, 3, 3, '#f48fb1'); R(x, y + b / 16, 6, 7, 1, 1, '#ffd54f'); }
+}
+function drawWall(r, x, y, ch) {
+  const th = theme(r);
+  if (y === 0) {
+    R(x, y, 0, 0, 16, 16, th.wall);
+    R(x, y, 0, 0, 16, 4, th.top); R(x, y, 0, 0, 16, 1, shade(th.top, 25)); R(x, y, 0, 4, 16, 1, shade(th.wall, -25));
+    for (let i = 0; i < 3; i++) { R(x, y, 0, 7 + i * 3, 16, 1, shade(th.wall, -14)); R(x, y, ((x + i) % 2) ? 4 : 11, 5 + i * 3, 1, 3, shade(th.wall, -14)); }
+    R(x, y, 0, 14, 16, 2, shade(th.wall, -30));
+  } else {
+    R(x, y, 0, 0, 16, 16, shade(th.wall, 8)); R(x, y, 1, 1, 14, 14, shade(th.top, -6)); R(x, y, 1, 1, 14, 1, shade(th.top, 18));
+  }
+  if (ch === 'W') {
+    const a = G.anim;
+    R(x, y, 2, 4, 12, 9, '#8fd3fe'); R(x, y, 2, 9, 12, 4, '#b8e6ff');
+    R(x, y, 2 + Math.floor((a * 2 + x * 3) % 10), 6, 4, 2, '#ffffff'); R(x, y, 2 + Math.floor((a * 1.3 + x * 5) % 10), 9, 3, 1, '#ffffff');
+    R(x, y, 7, 4, 1, 9, th.wall); R(x, y, 2, 8, 12, 1, th.wall); R(x, y, 2, 13, 12, 1, shade(th.top, 20));
+  }
+  if (y === 0 && ch === '#' && x % 5 === 2) { // 벽등
+    const on = L.dark > 0;
+    R(x, y, 6, 6, 4, 3, '#3b3b3b'); R(x, y, 7, 9, 2, 2, on ? '#ffe9a8' : '#ddd');
+  }
+}
+function drawDoor(r, x, y, open, exit) {
+  drawWall(r, x, y, '#');
+  const a = G.anim;
+  R(x, y, 1, 1, 14, 15, '#2a2f38');
+  if (open) {
+    R(x, y, 2, 2, 12, 14, '#fff7d6'); R(x, y, 4, 4, 8, 12, '#ffe7a3');
+    R(x, y, 2, 2, 2, 14, exit ? '#2f8448' : '#c99a52'); R(x, y, 12, 2, 2, 14, exit ? '#2f8448' : '#c99a52');
+  } else {
+    const c1 = exit ? '#2b3a44' : '#6b4a2b', c2 = exit ? '#3c4f5b' : '#83603b';
+    R(x, y, 2, 2, 12, 14, c1); R(x, y, 3, 3, 10, 5, c2); R(x, y, 3, 9, 10, 6, c2); R(x, y, 11, 9, 1, 2, '#e9c46a');
+    if (exit) { R(x, y, 5, 5, 6, 1, '#e9c46a'); R(x, y, 5, 12, 6, 1, '#e9c46a'); }
+  }
+  const blink = Math.sin(a * 5) > 0;
+  R(x, y, 6, 0, 4, 1, '#222'); R(x, y, 7, 0, 2, 1, open ? '#4ade80' : (blink ? '#ff4d4d' : '#7f1d1d'));
+}
+function drawCrate(x, y, state) {
+  const bob = state === 'current' ? -Math.abs(Math.sin(G.anim * 3.2)) * 2 : 0, yy = y + bob / 16;
+  const wood = state === 'locked' ? '#9a8a78' : '#c0823f', dark = state === 'locked' ? '#6f6356' : '#7d4f24', lite = state === 'locked' ? '#b3a594' : '#e0a663';
+  R(x, yy, 1, 4, 14, 11, wood); R(x, yy, 1, 4, 14, 2, lite);
+  R(x, yy, 1, 9, 14, 1, dark); R(x, yy, 1, 14, 14, 1, dark); R(x, yy, 1, 4, 1, 11, dark); R(x, yy, 14, 4, 1, 11, dark);
+  R(x, yy, 2, 6, 1, 1, '#4a3a2a'); R(x, yy, 13, 6, 1, 1, '#4a3a2a'); R(x, yy, 2, 12, 1, 1, '#4a3a2a'); R(x, yy, 13, 12, 1, 1, '#4a3a2a');
+  if (state === 'open') {
+    R(x, y, 0, 1, 16, 3, '#d29a5c'); R(x, y, 0, 1, 16, 1, '#ecc08c');
+    R(x, y, 3, 6, 10, 3, '#ffd54f'); R(x, y, 4, 6, 2, 1, '#fff3b0'); R(x, y, 9, 7, 2, 1, '#fff3b0');
+  } else {
+    const gold = state === 'current';
+    R(x, yy, 6, 8, 4, 4, gold ? '#ffcc33' : '#a9a9a9'); R(x, yy, 6, 8, 4, 1, gold ? '#fff0a0' : '#cfcfcf');
+    R(x, yy, 6, 6, 1, 2, gold ? '#ffcc33' : '#a9a9a9'); R(x, yy, 9, 6, 1, 2, gold ? '#ffcc33' : '#a9a9a9'); R(x, yy, 7, 5, 2, 1, gold ? '#ffcc33' : '#a9a9a9');
+    R(x, yy, 7, 9, 2, 2, '#4a3a2a');
+  }
+}
+function drawThing(r, x, y, ch) {
+  const a = G.anim, h = hash(x, y);
+  switch (ch) {
+    case 'p': R(x, y, 5, 10, 6, 5, '#b5653a'); R(x, y, 4, 9, 8, 2, '#8f4c2a'); R(x, y, 3, 2, 5, 6, '#3f8f4f'); R(x, y, 7, 0, 5, 8, '#55a862'); R(x, y, 5, 4, 6, 5, '#4a9c58'); R(x, y, 8, 1, 2, 2, '#7cc98a'); break;
+    case 'r': R(x, y, 1, 4, 14, 11, '#cfe9d4'); R(x, y, 1, 4, 14, 1, '#ffffff'); R(x, y, 1, 14, 14, 1, '#7aa889'); R(x, y, 2, 10, 12, 4, '#6b8f4e');
+      R(x, y, 4, 7, 5, 3, '#5fae4f'); { const o = Math.round(Math.sin(a * 3 + h) * 1.5); for (let i = 0; i < 4; i++) R(x, y, 5 + i * 2 + o, 9 - (i % 2), 2, 2, i === 3 ? '#c6e86a' : '#9bd35a'); }
+      R(x, y, 2, 5, 1, 4, 'rgba(255,255,255,.7)'); break;
+    case 's': R(x, y, 1, 0, 14, 16, '#7a5233'); R(x, y, 1, 0, 14, 1, '#9b6f4b'); for (let row = 0; row < 3; row++) { R(x, y, 2, 1 + row * 5, 12, 4, '#4e331f'); for (let i = 0; i < 5; i++) R(x, y, 2 + i * 2 + (h >> row) % 2, 2 + row * 5, 2, 3, ['#e76f51', '#2a9d8f', '#e9c46a', '#457b9d', '#f4a261'][(h + i + row) % 5]); } break;
+    case 't': R(x, y, 1, 5, 14, 6, '#a57145'); R(x, y, 1, 5, 14, 1, '#c48b5a'); R(x, y, 2, 11, 2, 5, '#7a5233'); R(x, y, 12, 11, 2, 5, '#7a5233'); R(x, y, 4, 3, 4, 3, '#ffffff'); R(x, y, 10, 2, 2, 4, '#457b9d'); R(x, y, 10, 1, 2, 1, '#9ad1ff'); break;
+    case 'k': R(x, y, 7, 8, 2, 8, '#444'); R(x, y, 4, 14, 8, 2, '#444'); R(x, y, 3, 3, 11, 4, '#e3e6ea'); R(x, y, 3, 3, 11, 1, '#ffffff'); R(x, y, 12, 2, 3, 6, '#9aa5b1'); R(x, y, 3, 3, 2, 4, '#222'); R(x, y, 13, 3, 1, 1, Math.sin(a * 3) > 0 ? '#7fd8ff' : '#3a6f8f'); break;
+    case 'b': R(x, y, 0, 5, 16, 7, '#8a6a4a'); R(x, y, 0, 5, 16, 1, '#a88560'); R(x, y, 1, 12, 2, 4, '#5e4630'); R(x, y, 13, 12, 2, 4, '#5e4630');
+      R(x, y, 3, 2, 1, 4, '#888'); R(x, y, 2, 1, 3, 2, '#666'); R(x, y, 8, 3, 5, 2, '#e07a5f'); R(x, y, 9, 2, 3, 1, '#f2cc8f'); break;
+    case 'i': R(x, y, 1, 3, 14, 12, '#bfe9f5'); R(x, y, 1, 3, 14, 3, '#ecfbff'); R(x, y, 12, 6, 3, 9, '#9fd6e8'); R(x, y, 3, 8, 2, 1, '#fff'); R(x, y, 4, 7, 1, 3, '#fff'); break;
+    case 'g': { const b = Math.round(Math.abs(Math.sin(a * 3 + h)) * 1.5), look = Math.sin(a * 0.7 + h) > 0 ? 1 : 0;
+      R(x, y, 4, 3 - b, 8, 12, '#1f2933'); R(x, y, 6, 6 - b, 4, 8, '#ffffff'); R(x, y, 6 + look, 4 - b, 1, 1, '#fff'); R(x, y, 8 + look, 4 - b, 1, 1, '#fff');
+      R(x, y, 7 + look, 5 - b, 2, 1, '#f4a261'); R(x, y, 3, 7 - b, 1, 5, '#1f2933'); R(x, y, 12, 7 - b, 1, 5, '#1f2933'); R(x, y, 5, 14, 2, 1, '#f4a261'); R(x, y, 9, 14, 2, 1, '#f4a261'); break; }
+    case 'f': R(x, y, 1, 6, 14, 9, '#3f8f4f'); R(x, y, 2, 4, 12, 6, '#55a862'); R(x, y, 3, 3, 4, 3, '#4a9c58');
+      for (let i = 0; i < 5; i++) { const fx = 2 + ((h >> (i * 3)) % 11), fy = 4 + ((h >> (i * 2)) % 8), sw = Math.sin(a * 2 + i + h) > 0.6 ? 1 : 0; R(x, y, fx, fy - sw, 2, 2, ['#ff8fab', '#ffd166', '#ffffff', '#c77dff', '#ff6b6b'][(h + i) % 5]); }
+      break;
+    case 'u': { const sw = Math.round(Math.sin(a * 1.2 + h) * 0.6);
+      R(x, y, 6, 8, 4, 8, '#7a5233'); R(x, y, 6, 8, 1, 8, '#9b6f4b');
+      R(x, y, 0 + sw, -6, 16, 14, '#3f8f4f'); R(x, y, 2 + sw, -8, 12, 4, '#4a9c58'); R(x, y, 3 + sw, -5, 6, 4, '#66bb6a'); R(x, y, 10 + sw, -2, 4, 3, '#2f7a3f');
+      if (h % 2) { R(x, y, 4 + sw, 0, 2, 2, '#ef476f'); R(x, y, 11 + sw, -4, 2, 2, '#ef476f'); }
+      break; }
+    case 'q': for (let i = 0; i < 2; i++) { const cx = 1 + i * 8, cc = ['#ff6fa5', '#ffd166', '#06d6a0', '#7b8cde'][(h + i) % 4];
+      R(x, y, cx, 4, 6, 11, cc); R(x, y, cx, 4, 6, 1, shade(cc, 40)); R(x, y, cx, 3, 6, 1, '#c99a52'); R(x, y, cx, 15, 6, 1, '#c99a52'); R(x, y, cx + 1, 6, 1, 7, shade(cc, -30)); }
+      break;
+    case 'N': R(x, y, 0, 6, 16, 6, '#7d5638'); R(x, y, 0, 6, 16, 1, '#9b6f4b'); R(x, y, 1, 12, 2, 4, '#5e4630'); R(x, y, 13, 12, 2, 4, '#5e4630');
+      R(x, y, 3, 3, 10, 4, '#fffaf0'); R(x, y, 8, 3, 1, 4, '#d9cbb0'); R(x, y, 4, 4, 3, 1, '#9aa5b1'); R(x, y, 9, 4, 3, 1, '#9aa5b1'); R(x, y, 4, 5, 2, 1, '#9aa5b1');
+      R(x, y, 13, 1, 2, 5, '#ffcf56'); R(x, y, 13, 0, 2, 1, '#ff7b54'); break;
+  }
+}
+function drawPlayer(p) {
+  const bob = p.moving ? -Math.abs(Math.sin(p.prog * Math.PI)) * 2 : 0;
+  const x = p.fx * T, y = p.fy * T + bob, u = 2;
+  const P2 = (dx, dy, w, h, c) => { CX.fillStyle = c; CX.fillRect(x + dx * u, y + dy * u, w * u, h * u); };
+  const walk = p.moving ? (p.step % 2 ? 1 : -1) * (p.prog < 0.5 ? 1 : 0) : 0;
+  P2(5, 11, 2, 4 + (walk > 0 ? -1 : 0), '#2b3a55'); P2(9, 11, 2, 4 + (walk < 0 ? -1 : 0), '#2b3a55');
+  P2(5, 14 + (walk > 0 ? -1 : 0), 2, 1, '#e76f51'); P2(9, 14 + (walk < 0 ? -1 : 0), 2, 1, '#e76f51');
+  if (p.dir !== 'down') P2(p.dir === 'left' ? 9 : 4, 7, 3, 4, '#f4a261');   // 가방
+  P2(4, 7, 8, 5, '#ffffff'); P2(4, 7, 8, 1, '#e8f1f0'); P2(7, 8, 2, 4, '#11686c'); P2(4, 11, 8, 1, '#d6e4e2');
+  if (p.dir === 'up') P2(5, 7, 6, 4, '#f4a261');
+  if (p.dir === 'left') P2(3, 8, 2, 3, '#f1c6a0'); else if (p.dir === 'right') P2(11, 8, 2, 3, '#f1c6a0'); else { P2(3, 8, 1, 3, '#f1c6a0'); P2(12, 8, 1, 3, '#f1c6a0'); }
+  P2(4, 1, 8, 7, '#f6d0ad');
+  P2(4, 0, 8, 3, '#3b2a20');
+  if (p.dir === 'up') P2(4, 0, 8, 6, '#3b2a20');
+  else if (p.dir === 'down') { P2(6, 4, 1, 2, '#1c2a33'); P2(9, 4, 1, 2, '#1c2a33'); P2(4, 3, 1, 2, '#3b2a20'); P2(11, 3, 1, 2, '#3b2a20'); P2(5, 6, 1, 1, '#f4a3a3'); P2(10, 6, 1, 1, '#f4a3a3'); }
+  else if (p.dir === 'left') { P2(5, 4, 1, 2, '#1c2a33'); P2(9, 1, 3, 5, '#3b2a20'); }
+  else { P2(10, 4, 1, 2, '#1c2a33'); P2(4, 1, 3, 5, '#3b2a20'); }
+  P2(3, -1, 10, 2, '#11686c'); P2(11, 0, 3, 1, '#11686c');   // 모자
+}
+function currentTarget() {
+  if (!S || S.current >= P.length) return null;
+  const list = roomPuzzles(S.viewRoom), k = list.findIndex(x => x.i === S.current);
+  return k >= 0 ? findChar(S.viewRoom, 'ABC'[k]) : null;
+}
+function doorOpenPos() { if (!S || !roomCleared(S.viewRoom) || S.viewRoom >= L.rooms.length - 1) return null; return findChar(S.viewRoom, 'D'); }
+function label(ctx, text, cx, cy, bg, fg, size) {
+  ctx.font = `700 ${size || 13}px "Gowun Dodum", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  const w = ctx.measureText(text).width + 12, hgt = (size || 13) + 6;
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(cx - w / 2 + 2, cy - hgt + 6, w, hgt);
+  ctx.fillStyle = bg; ctx.fillRect(cx - w / 2, cy - hgt + 4, w, hgt); ctx.fillStyle = fg; ctx.fillText(text, cx, cy);
+}
+function mkLayer() { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; }
+function draw(dt) {
+  const cv = document.getElementById('scene'); if (!cv) return;
+  if (!FX.layers) FX.layers = { floor: mkLayer(), obj: mkLayer(), sil: mkLayer(), light: mkLayer() };
+  const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  const r = S.viewRoom, p = G.player, prow = p ? Math.ceil(p.fy - 1e-6) : -1, tags = [];
+  buildFloor();
+  // 1) 바닥 + 물
+  ctx.drawImage(FX.layers.floor, 0, 0);
+  CX = ctx;
+  for (const w of FX.water) drawWater(r, w.x, w.y, tileAt(r, w.x, w.y));
+  // 2) 물건 층 (줄 단위로 겹침 순서 유지)
+  const oc = FX.layers.obj.getContext('2d'); oc.clearRect(0, 0, W, H); CX = oc;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const ch = tileAt(r, x, y);
+      if (ch === '#' || ch === 'W') drawWall(r, x, y, ch);
+      else if (ch === 'D') drawDoor(r, x, y, roomCleared(r), false);
+      else if ('ABC'.includes(ch)) {
+        const it = slotOf(ch); if (!it) continue;
+        const res = S.results[it.p.id], st = res && res.s ? 'open' : it.i === S.current ? 'current' : 'locked';
+        if (it.p.final) drawDoor(r, x, y, st === 'open', true); else drawCrate(x, y, st);
+        tags.push({ x, y, k: 'ABC'.indexOf(ch) + 1, st, final: it.p.final });
+      } else if (ch !== 'w' && ch !== 'l') drawThing(r, x, y, ch);
+    }
+    if (p && y === prow) drawPlayer(p);
+  }
+  // 3) 그림자 + 외곽선 + 물건
+  const sc = FX.layers.sil.getContext('2d');
+  sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, W, H); sc.drawImage(FX.layers.obj, 0, 0);
+  sc.globalCompositeOperation = 'source-in'; sc.fillStyle = '#121826'; sc.fillRect(0, 0, W, H); sc.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.26; ctx.drawImage(FX.layers.sil, 5, 8); ctx.globalAlpha = 1;
+  ctx.drawImage(FX.layers.sil, -2, 0); ctx.drawImage(FX.layers.sil, 2, 0); ctx.drawImage(FX.layers.sil, 0, -2); ctx.drawImage(FX.layers.sil, 0, 2);
+  ctx.drawImage(FX.layers.obj, 0, 0);
+  // 4) 파티클
+  drawParticles(ctx);
+  // 5) 조명
+  const lights = [];
+  if (p) lights.push({ x: p.fx * T + 16, y: p.fy * T + 14, r: L.dark > 0.4 ? 120 : 150, col: null });
+  const cur = currentTarget(); if (cur) lights.push({ x: cur.x * T + 16, y: cur.y * T + 16, r: 92, col: '255,190,80', glow: 0.26 });
+  const door = doorOpenPos(); if (door) lights.push({ x: door.x * T + 16, y: door.y * T + 30, r: 110, col: '120,255,160', glow: 0.24 });
+  const note = findChar(r, 'N'); lights.push({ x: note.x * T + 26, y: note.y * T + 6, r: 54, col: '255,230,150', glow: 0.1 });
+  for (let x = 0; x < COLS; x++) { const ch = tileAt(r, x, 0); if (ch === 'W') lights.push({ x: x * T + 16, y: 30, r: 80, col: '170,220,255', glow: 0.08 }); else if (ch === '#' && x % 5 === 2 && L.dark > 0) lights.push({ x: x * T + 16, y: 24, r: 58, col: '255,214,130', glow: 0.1 }); }
+  const dark = L.dark ? L.dark + Math.sin(G.anim * 7) * 0.012 + (Math.random() < 0.004 ? 0.12 : 0) : 0;
+  if (dark > 0) {
+    const lc = FX.layers.light.getContext('2d');
+    lc.globalCompositeOperation = 'source-over'; lc.clearRect(0, 0, W, H); lc.fillStyle = L.dark > 0.4 ? `rgba(3,5,16,${dark})` : `rgba(8,14,34,${dark})`; lc.fillRect(0, 0, W, H);
+    lc.globalCompositeOperation = 'destination-out';
+    for (const l of lights) { const g = lc.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.7, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lc.fillStyle = g; lc.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2); }
+    lc.globalCompositeOperation = 'source-over';
+    ctx.drawImage(FX.layers.light, 0, 0);
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  for (const l of lights) { if (!l.col) continue; const pulse = l.glow * (1 + Math.sin(G.anim * 3) * 0.25); const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r * 0.8); g.addColorStop(0, `rgba(${l.col},${pulse})`); g.addColorStop(1, `rgba(${l.col},0)`); ctx.fillStyle = g; ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2); }
+  ctx.globalCompositeOperation = 'source-over';
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.68); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,20,.32)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  // 6) 이름표, 번호표, 떠오르는 글자
+  const bounce = Math.abs(Math.sin(G.anim * 3.2)) * 4;
+  tags.forEach(t => {
+    const bg = t.st === 'open' ? '#2f8448' : t.st === 'current' ? '#e08a12' : '#5d6873';
+    if (t.final) label(ctx, t.st === 'open' ? '출구 열림' : '출구', t.x * T + 16, t.y * T + T + 16, bg, '#fff');
+    else label(ctx, t.st === 'open' ? '✓' : String(t.k), t.x * T + 16, t.y * T - 2 - (t.st === 'current' ? bounce : 0), bg, '#fff');
+    if (t.st === 'current' && !t.final) label(ctx, '!', t.x * T + 16, t.y * T - 22 - bounce, '#ffd23f', '#3b2600', 15);
+  });
+  if (door) label(ctx, '▲ 다음 방', door.x * T + 16, door.y * T + T + 16 - bounce, '#2f8448', '#fff');
+  if (p) label(ctx, S.student.name, p.fx * T + 16, p.fy * T - 4, 'rgba(18,24,38,.85)', '#fff', 12);
+  for (const f of FX.floats) { const k = f.life / f.max; ctx.globalAlpha = Math.min(1, (1 - k) * 2); label(ctx, f.text, f.x, f.y - k * 40, f.color, '#fff', 16); ctx.globalAlpha = 1; }
+  // 7) 입장 연출: 원형으로 열리는 화면 + 방 이름 띠
+  const e = performance.now() - FX.enterAt;
+  if (e < 800 && p) {
+    const t = Math.min(1, e / 750), rad = (1 - Math.pow(1 - t, 3)) * W * 0.95;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(p.fx * T + 16, p.fy * T + 16, Math.max(1, rad), 0, Math.PI * 2, true); ctx.fillStyle = '#05070d'; ctx.fill('evenodd'); ctx.restore();
+  }
+  if (e > 250 && e < 3400) {
+    const t = (e - 250) / 3150, inT = Math.min(1, t * 6), outT = t > 0.82 ? (t - 0.82) / 0.18 : 0;
+    const off = (1 - Math.pow(1 - inT, 3)) - outT, bx = (off - 1) * W, by = H * 0.36;
+    ctx.save(); ctx.translate(bx, 0);
+    ctx.fillStyle = 'rgba(8,12,26,.84)'; ctx.fillRect(0, by, W, 74); ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, by, W, 3); ctx.fillRect(0, by + 71, W, 3);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#ffd23f'; ctx.font = '700 14px "JetBrains Mono", monospace';
+    ctx.fillText(`${L.code} · ${L.floor} · 관찰실 ${r + 1} / ${L.rooms.length}`, W / 2, by + 24);
+    ctx.fillStyle = '#ffffff'; ctx.font = '34px "Do Hyeon", sans-serif'; ctx.fillText(L.rooms[r].name, W / 2, by + 60);
+    ctx.restore();
+  }
+}
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (view !== 'room' || !S) { G.last = ts; return; }
+  if (!G.player) ensurePlayer();
+  const dt = Math.min(0.05, (ts - (G.last || ts)) / 1000); G.last = ts; G.anim += dt;
+  if (FX.burstPid) {
+    const list = roomPuzzles(S.viewRoom), k = list.findIndex(x => x.p.id === FX.burstPid);
+    if (k >= 0) {
+      const c = findChar(S.viewRoom, 'ABC'[k]); burstAt(c.x * T + 16, c.y * T + 12, roomCleared(S.viewRoom));
+      floatText('열렸다!', c.x * T + 16, c.y * T - 6, '#2f8448');
+      const d = doorOpenPos(); if (d && roomCleared(S.viewRoom)) { setTimeout(() => { spawn({ type: 'ring', x: d.x * T + 16, y: d.y * T + 20, max: 0.9, color: '120,255,160', size: 90 }); floatText('문이 열렸어요!', d.x * T + 16, d.y * T + 60, '#2f8448'); SFX.play('door'); }, 500); }
+    }
+    FX.burstPid = null;
+  }
+  if (!overlay) { update(dt); if (!REDUCED) ambient(dt); }
+  stepParticles(dt);
+  draw(dt);
+}
+requestAnimationFrame(loop);
+
+/* ---------- 화면 전체 축하 효과 (DOM 위 캔버스) ---------- */
+function celebrate(kind) {
+  if (REDUCED) return;
+  const c = document.createElement('canvas'); c.className = 'fx-layer'; c.width = innerWidth; c.height = innerHeight; document.body.appendChild(c);
+  const g = c.getContext('2d'), parts = [], cols = ['#ffd166', '#ef476f', '#06d6a0', '#118ab2', '#f78c6b', '#ffffff', '#c77dff'];
+  const shot = (x, y, n, spd) => { for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = spd * (0.4 + Math.random() * 0.8); parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - spd * 0.3, rot: Math.random() * 6, vr: rand(-10, 10), col: cols[i % cols.length], s: rand(5, 9), life: 0, max: rand(1.4, 2.4) }); } };
+  if (kind === 'final') { for (let i = 0; i < 6; i++) setTimeout(() => shot(rand(0.15, 0.85) * c.width, rand(0.15, 0.5) * c.height, 90, 520), i * 380); }
+  else if (kind === 'card') { shot(c.width / 2, c.height * 0.42, 140, 560); }
+  else { shot(c.width * 0.3, c.height * 0.35, 60, 420); shot(c.width * 0.7, c.height * 0.35, 60, 420); }
+  let last = performance.now(), start = last;
+  (function tick(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    g.clearRect(0, 0, c.width, c.height);
+    for (const p of parts) { p.life += dt; p.vy += 700 * dt; p.vx *= 0.99; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      if (p.life > p.max) continue; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.globalAlpha = Math.min(1, (p.max - p.life) * 2); g.fillStyle = p.col; g.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2 + p.s * Math.abs(Math.cos(p.rot))); g.restore(); }
+    if (now - start < (kind === 'final' ? 4800 : 2600)) requestAnimationFrame(tick); else c.remove();
+  })(last);
+}
+/* 엘리베이터 문 연출 */
+function elevatorDoors(code, place) {
+  SFX.play('ding');
+  if (REDUCED) return;
+  const d = document.createElement('div'); d.className = 'elev-doors';
+  d.innerHTML = `<div class="ed l"></div><div class="ed r"></div><div class="ed-sign"><b>${esc(code)}</b><span>${esc(place)}</span></div>`;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1700);
+}
+
+/* ---------- 입력 ---------- */
+const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
+function press(dir) { G.keys = G.keys.filter(k => k !== dir); G.keys.push(dir); G.bumpKey = ''; }
+function release(dir) { G.keys = G.keys.filter(k => k !== dir); }
+window.addEventListener('keydown', e => {
+  if (view !== 'room' || overlay) return;
+  if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  const d = KEYMAP[e.key];
+  if (d) { e.preventDefault(); if (!e.repeat) press(d); }
+  else if (e.key === ' ' || e.key === 'Enter' || e.key === 'e' || e.key === 'E') { e.preventDefault(); if (!e.repeat) interactFacing(); }
+});
+window.addEventListener('keyup', e => { const d = KEYMAP[e.key]; if (d) release(d); });
+window.addEventListener('blur', () => { G.keys = []; });
+app.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-dir]');
+  if (b) { e.preventDefault(); press(b.dataset.dir); b.classList.add('on'); return; }
+  if (e.target.id === 'scene' && G.player && !overlay) {
+    const rc = e.target.getBoundingClientRect();
+    walkTo(Math.floor((e.clientX - rc.left) / rc.width * COLS), Math.floor((e.clientY - rc.top) / rc.height * ROWS));
+  }
+});
+['pointerup', 'pointercancel'].forEach(t => window.addEventListener(t, () => { document.querySelectorAll('.pad .on').forEach(b => { release(b.dataset.dir); b.classList.remove('on'); }); }));
+app.addEventListener('pointerout', e => { const b = e.target.closest && e.target.closest('[data-dir]'); if (b && b.classList.contains('on')) { release(b.dataset.dir); b.classList.remove('on'); } });
+app.addEventListener('contextmenu', e => { if (e.target.closest('[data-dir]')) e.preventDefault(); });
+
+render();
+</script>
+</body>
+</html>
